@@ -137,6 +137,7 @@ export async function executeSyncTask(
         agentToUse,
         toastManager,
         taskId,
+        directory,
       }, syncPollTimeoutMs)
       if (pollError) {
         return pollError
