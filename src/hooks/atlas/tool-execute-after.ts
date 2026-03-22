@@ -22,8 +22,10 @@ import {
   buildStandaloneVerificationReminder,
 } from "./verification-reminders"
 import { isWriteOrEditToolName } from "./write-edit-tool-policy"
+import { parseReviewResponse, formatReviewSummary } from "../../shared/review-parser"
 
 const AUTO_REVIEW_WRITE_THRESHOLD = 5
+const MAX_REVIEW_CYCLES = 5
 import type { PendingTaskRef, SessionState } from "./types"
 import type { ToolExecuteAfterInput, ToolExecuteAfterOutput, TrackedTopLevelTaskRef } from "./types"
 
@@ -159,6 +161,95 @@ export function createToolExecuteAfterHandler(input: {
     }
     const isBackgroundLaunch = outputStr.includes("Background task launched") || outputStr.includes("Background task continued")
     if (isBackgroundLaunch) {
+      return
+    }
+
+    // Detect cubic-reviewer task results and inject structured findings
+    const isCubicReviewerResult = outputStr.includes("[P0]") || outputStr.includes("[P1]") || outputStr.includes("[P2]") || outputStr.includes("[P3]")
+    const agentName = typeof toolOutput.metadata?.agent === "string" ? toolOutput.metadata.agent : ""
+    if (isCubicReviewerResult && (agentName === "cubic-reviewer" || agentName.includes("review"))) {
+      const reviewResult = parseReviewResponse(outputStr)
+      const reviewCycle = sessionReviewCycle.get(toolInput.sessionID ?? "") ?? 0
+
+      if (reviewResult.hasBlockers && reviewCycle < MAX_REVIEW_CYCLES) {
+        const summary = formatReviewSummary(reviewResult)
+        const cycleNum = reviewCycle + 1
+        sessionReviewCycle.set(toolInput.sessionID ?? "", cycleNum)
+        // Reset write count so the auto-review threshold doesn't fire mid-fix
+        if (toolInput.sessionID) {
+          sessionWriteCounts.set(toolInput.sessionID, 0)
+        }
+
+        toolOutput.output = `${outputStr}
+
+<system-reminder>
+[REVIEW LOOP — CYCLE ${cycleNum}/${MAX_REVIEW_CYCLES}]
+
+${summary}
+
+You MUST fix all P0 and P1 issues listed above before proceeding.
+Fix P2 issues if straightforward. P3 can be noted and skipped.
+
+After fixing, re-review by delegating to cubic-reviewer again:
+\`\`\`
+task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Re-review after fixes (cycle ${cycleNum + 1})", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits. This is re-review cycle ${cycleNum + 1} — verify previous P0/P1 fixes are clean and no new issues were introduced.")
+\`\`\`
+
+Do NOT commit or report completion until the review loop returns zero P0 and P1 findings.
+</system-reminder>`
+
+        log(`[${HOOK_NAME}] Review loop cycle ${cycleNum}: ${reviewResult.summary}`, {
+          sessionID: toolInput.sessionID,
+          counts: reviewResult.counts,
+        })
+        return
+      }
+
+      if (!reviewResult.hasBlockers) {
+        // Review clean — reset tracking and let the result pass through with a clean signal
+        if (toolInput.sessionID) {
+          sessionReviewCycle.delete(toolInput.sessionID)
+          sessionWriteCounts.set(toolInput.sessionID, 0)
+        }
+
+        toolOutput.output = `${outputStr}
+
+<system-reminder>
+[REVIEW LOOP — CLEAN]
+
+${reviewResult.summary}
+
+Review loop complete. Zero P0/P1 issues. You may proceed to commit or report completion.
+</system-reminder>`
+
+        log(`[${HOOK_NAME}] Review loop clean`, {
+          sessionID: toolInput.sessionID,
+          cycles: reviewCycle,
+          remaining: reviewResult.counts,
+        })
+        return
+      }
+
+      // Max cycles reached — let the user decide
+      if (toolInput.sessionID) {
+        sessionReviewCycle.delete(toolInput.sessionID)
+      }
+
+      toolOutput.output = `${outputStr}
+
+<system-reminder>
+[REVIEW LOOP — MAX CYCLES REACHED (${MAX_REVIEW_CYCLES})]
+
+${formatReviewSummary(reviewResult)}
+
+The review loop has reached its maximum of ${MAX_REVIEW_CYCLES} cycles. Remaining issues could not be fully resolved.
+Report the remaining findings to the user and ask how to proceed.
+</system-reminder>`
+
+      log(`[${HOOK_NAME}] Review loop max cycles reached`, {
+        sessionID: toolInput.sessionID,
+        counts: reviewResult.counts,
+      })
       return
     }
 
