@@ -33,7 +33,28 @@ function sid(props?: {
 }
 
 /**
+ * Check session status directly via API as a fallback when SSE events
+ * may be delayed or lost.
+ */
+async function checkSessionStatusDirect(
+  client: OpencodeClient,
+  sessionID: string,
+): Promise<boolean> {
+  try {
+    const resp = await (client.session as any).status?.({})
+    if (!resp?.data) return false
+    const status = resp.data[sessionID]
+    return !status || status.type === "idle"
+  } catch {
+    return false
+  }
+}
+
+const STATUS_CHECK_INTERVAL_MS = 10_000
+
+/**
  * Wait for session completion using SSE events instead of polling.
+ * Falls back to periodic status checks if SSE events don't arrive.
  * Returns null on success, error string on abort or stream failure.
  */
 export async function waitForSession(
@@ -52,18 +73,45 @@ export async function waitForSession(
       query: { directory },
     })) as typeof events;
   } catch (error) {
-    log("[event-waiter] SSE subscription failed", {
+    log("[event-waiter] SSE subscription failed, falling back to status polling", {
       sessionID,
       error: String(error),
     });
-    return `SSE subscription failed for session ${sessionID}: ${error instanceof Error ? error.message : String(error)}`;
+    // SSE failed — fall back to polling session status directly
+    while (!abort?.aborted) {
+      const idle = await checkSessionStatusDirect(client, sessionID)
+      if (idle) {
+        log("[event-waiter] Session idle via status poll fallback", { sessionID })
+        return null
+      }
+      await new Promise(r => setTimeout(r, STATUS_CHECK_INTERVAL_MS))
+    }
+    return `Task aborted.\n\nSession ID: ${sessionID}`;
   }
 
   const stream = events.stream;
   let receivedIdle = false;
 
+  // Start periodic status check as safety net for missed SSE events
+  let statusCheckTimer: ReturnType<typeof setInterval> | undefined
+  let resolvedViaStatusCheck = false
+  const statusCheckPromise = new Promise<void>((resolve) => {
+    statusCheckTimer = setInterval(async () => {
+      const idle = await checkSessionStatusDirect(client, sessionID)
+      if (idle) {
+        log("[event-waiter] Session idle via periodic status check fallback", { sessionID })
+        receivedIdle = true
+        resolvedViaStatusCheck = true
+        resolve()
+      }
+    }, STATUS_CHECK_INTERVAL_MS)
+  })
+
   try {
     for await (const event of stream) {
+      if (resolvedViaStatusCheck) {
+        return null
+      }
       if (abort?.aborted) {
         log("[event-waiter] Aborted", { sessionID });
         return `Task aborted.\n\nSession ID: ${sessionID}`;
@@ -108,6 +156,7 @@ export async function waitForSession(
     log("[event-waiter] Stream error", { sessionID, error: String(error) });
     return `SSE stream error for session ${sessionID}: ${error instanceof Error ? error.message : String(error)}`;
   } finally {
+    if (statusCheckTimer) clearInterval(statusCheckTimer)
     log("[event-waiter] Stream ended", { sessionID, receivedIdle });
   }
 
