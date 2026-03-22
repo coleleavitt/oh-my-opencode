@@ -75,7 +75,7 @@ export function parseReviewResponse(text: string): ReviewResult {
     p3: issues.filter(i => i.priority === 3).length,
   }
 
-  const hasBlockers = counts.p0 > 0 || counts.p1 > 0
+  const hasBlockers = counts.p0 > 0 || counts.p1 > 0 || counts.p2 > 0
 
   const parts: string[] = []
   if (counts.p0 > 0) parts.push(`${counts.p0} P0 critical`)
@@ -104,9 +104,12 @@ export function formatReviewSummary(result: ReviewResult): string {
   if (result.hasBlockers) {
     lines.push("Issues requiring fixes:")
     for (const issue of result.issues) {
-      if (issue.priority > 1) continue
+      if (issue.priority > 2) continue
       const loc = issue.line ? `${issue.file}:${issue.line}` : issue.file
       lines.push(`  [P${issue.priority}] ${loc} — ${issue.title}`)
+    }
+    if (result.counts.p3 > 0) {
+      lines.push(`  (${result.counts.p3} P3 low-priority issues noted but not blocking)`)
     }
   }
 

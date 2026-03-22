@@ -379,9 +379,9 @@ A task is complete when:
 After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
 
 1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
-2. **Fix ALL P0 and P1 findings.** Fix P2 if straightforward. P3 can be noted and skipped.
+2. **Fix ALL P0 (critical), P1 (high), and P2 (medium) findings.** P3 (low) — fix if quick, otherwise note and skip.
 3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
-4. **Repeat** until zero P0 and P1 findings.
+4. **Repeat** until zero P0, P1, and P2 findings.
 
 **Skip the review loop ONLY when:**
 - Changes are trivial (typo fix, config tweak, single-line change)

@@ -57,27 +57,27 @@ Run the implement→review→fix→re-review loop until the codebase is clean.
    - Extract all **[P0]**, **[P1]**, **[P2]**, **[P3]** issues
    - Count by priority
 
-3. **If P0 or P1 issues exist**:
+3. **Fix ALL findings by priority**:
    - Fix ALL P0 issues (critical — must fix)
-   - Fix ALL P1 issues (high — should fix)
-   - Fix P2 issues if straightforward
-   - Note P3 issues but skip them
+   - Fix ALL P1 issues (high — must fix)
+   - Fix ALL P2 issues (medium — should fix)
+   - P3 issues (low) — fix if quick, otherwise note and skip
 
 4. **Re-review** after fixes:
    - Delegate to cubic-reviewer again
    - Verify fixes are clean and didn't introduce new issues
 
 5. **Repeat** steps 2-4 until:
-   - Zero P0 and P1 findings remain
+   - Zero P0, P1, and P2 findings remain
    - Maximum 5 review cycles (safety limit)
 
 6. **Report final status**:
-   - "Review loop complete: N cycles, zero P0/P1 remaining"
-   - Or: "Review loop hit max cycles: N P0/P1 issues remain"
+   - "Review loop complete: N cycles, zero P0/P1/P2 remaining"
+   - Or: "Review loop hit max cycles: N issues remain"
 
 ## Important Rules
 - Track each review cycle with TodoWrite
 - After each fix, verify the fix didn't break anything (run relevant tests if available)
 - NEVER delete tests to make them pass
 - NEVER add type ignores to suppress errors
-- If you cannot fix a P0/P1 after 2 attempts, flag it for the user and move on`
+- If you cannot fix a finding after 2 attempts, flag it for the user and move on`

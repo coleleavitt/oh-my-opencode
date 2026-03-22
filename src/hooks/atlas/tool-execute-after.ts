@@ -87,11 +87,11 @@ You have accumulated significant file edits. Before committing, you MUST run the
 task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes in this repository for P0-P3 issues. Focus on bugs, security vulnerabilities, and logic errors introduced by recent edits. Use git diff to see what changed.")
 \`\`\`
 
-**STEP 2: Fix ALL P0 and P1 findings.** P2 findings should be fixed if straightforward. P3 can be noted but skipped.
+**STEP 2: Fix ALL findings by priority.** P0 critical and P1 high MUST be fixed. P2 medium SHOULD be fixed. P3 low — fix if quick, otherwise note and skip.
 
 **STEP 3: After fixing, re-review** — delegate to cubic-reviewer again to confirm fixes are clean and didn't introduce new issues.
 
-**STEP 4: Repeat** until the reviewer returns ZERO P0 and P1 findings.
+**STEP 4: Repeat** until the reviewer returns ZERO P0, P1, and P2 findings.
 
 Only commit when the review loop is clean. This is not optional for non-trivial changes.
 </system-reminder>`
@@ -187,15 +187,15 @@ export function createToolExecuteAfterHandler(input: {
 
 ${summary}
 
-You MUST fix all P0 and P1 issues listed above before proceeding.
-Fix P2 issues if straightforward. P3 can be noted and skipped.
+You MUST fix all P0 (critical), P1 (high), and P2 (medium) issues listed above.
+P3 (low) issues — fix if quick, otherwise note and move on.
 
 After fixing, re-review by delegating to cubic-reviewer again:
 \`\`\`
-task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Re-review after fixes (cycle ${cycleNum + 1})", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits. This is re-review cycle ${cycleNum + 1} — verify previous P0/P1 fixes are clean and no new issues were introduced.")
+task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Re-review after fixes (cycle ${cycleNum + 1})", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits. This is re-review cycle ${cycleNum + 1} — verify previous fixes are clean and no new issues were introduced.")
 \`\`\`
 
-Do NOT commit or report completion until the review loop returns zero P0 and P1 findings.
+Do NOT commit or report completion until the review loop returns zero P0, P1, and P2 findings.
 </system-reminder>`
 
         log(`[${HOOK_NAME}] Review loop cycle ${cycleNum}: ${reviewResult.summary}`, {

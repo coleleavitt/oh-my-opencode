@@ -1571,6 +1571,11 @@ export class BackgroundManager {
 ${completedTasksText || `- \`${task.id}\`: ${task.description}`}
 
 Use \`background_output(task_id="<id>")\` to retrieve each result.
+
+If these tasks made code changes, run the review loop before committing:
+\`\`\`
+task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes after background tasks", prompt="Review all uncommitted changes for P0-P3 issues. Background implementation tasks just completed — focus on bugs introduced by recent edits.")
+\`\`\`
 </system-reminder>`
     } else {
       // Individual completion - silent notification

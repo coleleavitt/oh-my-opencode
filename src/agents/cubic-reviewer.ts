@@ -121,25 +121,38 @@ If the Repository Settings below include \`customRules\` with at least one rule,
 
 const STEP_BUG_DETECTION = `## STEP 4: Bug Detection
 
-### [P0] Critical - Must fix before commit
-- Security vulnerabilities (hardcoded secrets, injection, auth bypass)
-- Crashes (null access, unhandled errors, missing imports)
-- Data corruption risks (race conditions, state mutations)
-- Breaking changes (removed APIs still in use)
+Priority levels align with Bugcrowd VRT / CVSS v3.1 severity ratings:
 
-### [P1] High - Should fix
-- Logic errors (wrong operators, incorrect conditionals)
+### [P0] Critical (CVSS 9.0-10.0) — Must fix immediately
+- Remote code execution, command injection, SQL injection
+- Authentication bypass, vertical privilege escalation
+- Hardcoded secrets, credentials in source code
+- Crashes on any input (null access, unhandled errors, missing imports)
+- Data corruption risks (race conditions, unsafe state mutations)
+- Breaking changes (removed APIs still in use, incompatible signatures)
+
+### [P1] High (CVSS 7.0-8.9) — Must fix before commit
+- Significant information disclosure (PII, credentials, internal paths)
+- Stored XSS with meaningful impact
+- IDOR allowing access to other users' data
+- Logic errors (wrong operators, incorrect conditionals, off-by-one)
 - Missing error handling (unhandled promises, dropped Results)
 - Resource leaks (memory, connections, file handles)
-- Incomplete migrations
+- Incomplete migrations, partial refactors
 
-### [P2] Medium
-- Edge cases (null, empty, boundaries)
-- Type safety issues
-- Performance problems
+### [P2] Medium (CVSS 4.0-6.9) — Should fix
+- Reflected XSS, CSRF on non-critical functionality
+- Edge cases (null, empty, boundary conditions)
+- Type safety issues, unchecked casts
+- Performance problems (O(n^2) where O(n) is trivial, missing indexes)
+- Input validation gaps, missing bounds checks
+- Session management issues
 
-### [P3] Low
-- Code clarity improvements`
+### [P3] Low (CVSS 0.1-3.9) — Fix if quick, note otherwise
+- Code clarity improvements
+- Missing security headers without demonstrated impact
+- Verbose error messages exposing internal details
+- Suboptimal but correct implementations`
 
 const STEP_DO_NOT_REPORT = `## DO NOT REPORT
 - Style preferences or formatting
