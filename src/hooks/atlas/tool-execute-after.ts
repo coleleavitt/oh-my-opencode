@@ -71,23 +71,27 @@ function resolveTaskContext(
 }
 
 const sessionWriteCounts = new Map<string, number>()
-const sessionReviewSuggested = new Set<string>()
+const sessionReviewCycle = new Map<string, number>()
 
 const AUTO_REVIEW_REMINDER = `
 
 <system-reminder>
-[CUBIC REVIEWER - POST-IMPLEMENTATION REVIEW AVAILABLE]
+[CUBIC REVIEWER - IMPLEMENT → REVIEW → FIX LOOP]
 
-You have made ${AUTO_REVIEW_WRITE_THRESHOLD}+ file edits in this session. Consider running a review before committing:
+You have accumulated significant file edits. Before committing, you MUST run the review loop:
 
-**Option 1**: Delegate to cubic-reviewer sub-agent:
+**STEP 1: Delegate review**
 \`\`\`
-task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")
+task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes in this repository for P0-P3 issues. Focus on bugs, security vulnerabilities, and logic errors introduced by recent edits. Use git diff to see what changed.")
 \`\`\`
 
-**Option 2**: Use the /review command directly.
+**STEP 2: Fix ALL P0 and P1 findings.** P2 findings should be fixed if straightforward. P3 can be noted but skipped.
 
-This is a suggestion, not a requirement. Skip if changes are trivial or already reviewed.
+**STEP 3: After fixing, re-review** — delegate to cubic-reviewer again to confirm fixes are clean and didn't introduce new issues.
+
+**STEP 4: Repeat** until the reviewer returns ZERO P0 and P1 findings.
+
+Only commit when the review loop is clean. This is not optional for non-trivial changes.
 </system-reminder>`
 
 export function createToolExecuteAfterHandler(input: {
@@ -123,10 +127,13 @@ export function createToolExecuteAfterHandler(input: {
           const writeCount = (sessionWriteCounts.get(toolInput.sessionID) ?? 0) + 1
           sessionWriteCounts.set(toolInput.sessionID, writeCount)
 
-          if (writeCount >= AUTO_REVIEW_WRITE_THRESHOLD && !sessionReviewSuggested.has(toolInput.sessionID)) {
-            sessionReviewSuggested.add(toolInput.sessionID)
+          const reviewCycle = sessionReviewCycle.get(toolInput.sessionID) ?? 0
+          const nextThreshold = AUTO_REVIEW_WRITE_THRESHOLD + (reviewCycle * AUTO_REVIEW_WRITE_THRESHOLD)
+
+          if (writeCount >= nextThreshold) {
+            sessionReviewCycle.set(toolInput.sessionID, reviewCycle + 1)
             toolOutput.output += AUTO_REVIEW_REMINDER
-            log(`[${HOOK_NAME}] Auto-review suggestion injected after ${writeCount} writes`, {
+            log(`[${HOOK_NAME}] Auto-review loop triggered (cycle ${reviewCycle + 1}, ${writeCount} writes)`, {
               sessionID: toolInput.sessionID,
             })
           }
