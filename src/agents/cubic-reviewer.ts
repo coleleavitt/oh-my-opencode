@@ -163,14 +163,47 @@ const STEP_DO_NOT_REPORT = `## DO NOT REPORT
 
 NOTE: Unless the instructions above specify otherwise, focus on issues INTRODUCED by recent changes rather than pre-existing issues.`
 
-const TOOL_RESTRICTIONS = `## Tool Restrictions
+const STEP_VALIDATE_FINDINGS = `## STEP 5: Validate Every Finding (MANDATORY)
 
-IMPORTANT: Do NOT run linting, type checking, or test commands. This includes:
-- \`npm run lint\`, \`eslint\`, \`prettier\`, etc.
-- \`npm run typecheck\`, \`tsc\`, \`tsgo\`, etc.
-- \`npm test\`, \`jest\`, \`vitest\`, etc.
+Before reporting ANY issue, you MUST prove it is real. Unverified findings waste time and introduce bugs when "fixed."
 
-IMPORTANT: Do NOT run any git write command. Never run: \`git add\`, \`git commit\`, \`git push\`, \`git merge\`, \`git rebase\`, \`git reset\`, \`git checkout\`, \`git cherry-pick\`, \`git stash\`, or \`git apply\`.`
+### Validation checklist — for EACH finding, do at least ONE:
+
+1. **Verify the code exists**: Use Read tool to confirm the file:line contains the code you're flagging. If the line number doesn't match, DROP the finding.
+2. **Grep for the pattern**: Use Grep to confirm the problematic pattern exists (e.g., \`.unwrap()\`, unawaited promise, missing null check). If Grep returns nothing, DROP the finding.
+3. **Check type errors**: Run \`lsp_diagnostics\` on the file. If the LSP reports the same issue, it's CONFIRMED.
+4. **Trace the data flow**: For logic errors, Read the caller and callee to confirm the bug is reachable. If the code path is unreachable, DROP the finding.
+5. **Check if already handled**: Grep for error handling, guards, or validation that might already address the issue upstream. If handled, DROP the finding.
+
+### Evidence requirements by priority:
+
+- **P0 Critical**: MUST show the exact vulnerable code snippet AND explain the exploit/crash path. If you cannot demonstrate how it crashes or gets exploited, downgrade or drop.
+- **P1 High**: MUST show the code AND explain the failure scenario. "Could potentially fail" is NOT sufficient — show WHEN it fails.
+- **P2 Medium**: MUST confirm the code exists at the stated line. Show the edge case input that triggers it.
+- **P3 Low**: Confirm the code exists. Brief explanation sufficient.
+
+### NEVER report:
+- A bug at a line number you haven't verified with Read tool
+- A "missing null check" without confirming the value can actually be null
+- A "race condition" without tracing both concurrent paths
+- A "type error" without checking if TypeScript/LSP agrees
+- An issue that exists ONLY in your imagination — if you cannot find evidence, it does not exist`
+
+const TOOL_RESTRICTIONS = `## Tool Usage
+
+### ALLOWED (read-only verification):
+- \`lsp_diagnostics\` — run on changed files to confirm type errors and compiler issues
+- \`Read\` — verify code at specific lines
+- \`Grep\` — search for patterns across files
+- \`Glob\` — find files by pattern
+- \`git diff\`, \`git log\`, \`git show\` — read git state
+- \`tsc --noEmit 2>&1 | head -50\` — check for type errors (read-only, no output files)
+
+### FORBIDDEN (never run these):
+- Any command that modifies files: \`npm run lint --fix\`, \`eslint --fix\`, \`prettier --write\`
+- Test suites: \`npm test\`, \`jest\`, \`vitest\` (these may have side effects)
+- Any git write command: \`git add\`, \`git commit\`, \`git push\`, \`git merge\`, \`git rebase\`, \`git reset\`, \`git checkout\`, \`git cherry-pick\`, \`git stash\`, \`git apply\`
+- Any file write tool: Edit, Write, apply_patch, lsp_rename`
 
 const REVIEW_OUTPUT_FORMAT = `## Output Format
 
@@ -186,6 +219,7 @@ For each issue, use this exact format:
 **[P{0-3}] {file}:{line} - {title}**
 
 {1-2 sentence description of the issue and its impact}
+**Evidence:** {How you verified this — e.g., "Read tool confirmed line 45 contains raw string concatenation into SQL query" or "lsp_diagnostics reports type error on this line" or "Grep shows no null check before dereference"}
 
 
 Example output:
@@ -194,19 +228,23 @@ Example output:
 **[P0] src/api/auth.ts:45 - SQL injection vulnerability in user lookup**
 
 User input is concatenated directly into SQL query without parameterization, allowing attackers to execute arbitrary SQL.
+**Evidence:** Read tool shows line 45: \`db.query("SELECT * FROM users WHERE id = " + req.params.id)\` — no parameterization.
 
 
 **[P1] src/hooks/useData.ts:23 - Missing error handling for API failure**
 
 The fetch call has no try-catch, causing unhandled promise rejection when the API returns an error.
+**Evidence:** Read tool confirms bare \`await fetch(url)\` with no catch. Grep finds no error boundary wrapping this component.
 
 
 **[P3] src/utils/format.ts:12 - Confusing variable naming in date calculation**
 
 Variable \`d\` should be renamed to \`daysDifference\` for clarity.
+**Evidence:** Read tool confirms single-letter variable \`d\` used in 15-line calculation spanning lines 12-27.
 
 
-After listing all issues, stop. Do not add a summary section or recommendations.`
+After listing all issues, stop. Do not add a summary section or recommendations.
+If you found ZERO verified issues, output: "Review clean — no issues found."`
 
 const SECURITY_PROMPT = `# Security Auditor
 
@@ -304,6 +342,7 @@ function buildReviewPrompt(): string {
     STEP_DEEP_INVESTIGATION,
     CUSTOM_RULES_INSTRUCTION,
     STEP_BUG_DETECTION,
+    STEP_VALIDATE_FINDINGS,
     STEP_DO_NOT_REPORT,
     TOOL_RESTRICTIONS,
     REVIEW_OUTPUT_FORMAT,
@@ -478,6 +517,8 @@ ${STEP_DEEP_INVESTIGATION}
 ${CUSTOM_RULES_INSTRUCTION}
 
 ${STEP_BUG_DETECTION}
+
+${STEP_VALIDATE_FINDINGS}
 
 ${STEP_DO_NOT_REPORT}
 

@@ -325,6 +325,35 @@ task(session_id="ses_abc123", load_skills=[], run_in_background=false, descripti
 - When refactoring, use various tools to ensure safe refactorings
 - **Bugfix Rule**: Fix minimally. NEVER refactor while fixing.
 
+### Test-Driven Development (MANDATORY for non-trivial changes):
+
+Write tests alongside code to prevent regressions. Follow this order:
+
+1. **Before implementing**: Check if tests exist for the code you're changing. Run \`Grep\` or \`Glob\` for test files related to the module.
+2. **During implementation**: For each significant function or behavior change:
+   - If tests exist → update them to cover the new behavior
+   - If no tests exist → write unit tests for the new/changed code
+3. **After implementation**: Run the test suite. All tests must pass.
+
+**When to write tests:**
+- New functions or methods
+- Bug fixes (write a test that reproduces the bug FIRST, then fix)
+- Changed behavior (update existing tests to match)
+- Edge cases you discover during implementation
+
+**When to skip tests:**
+- Config/env changes with no logic
+- Pure formatting or rename refactors
+- Documentation-only changes
+- User explicitly says not to test
+
+**Test quality rules:**
+- Test behavior, not implementation details
+- Each test should have a clear name describing what it verifies
+- Use the project's existing test framework and patterns
+- Never write tests that always pass (no empty test bodies)
+- Never delete existing tests to make the suite pass
+
 ### Verification:
 
 Run \`lsp_diagnostics\` on changed files at:
