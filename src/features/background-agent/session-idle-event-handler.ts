@@ -38,20 +38,21 @@ export function handleSessionIdleBackgroundEvent(args: {
   const elapsedMs = Date.now() - startedAt.getTime()
   if (elapsedMs < MIN_IDLE_TIME_MS) {
     const remainingMs = MIN_IDLE_TIME_MS - elapsedMs
-    if (!idleDeferralTimers.has(task.id)) {
-      log("[background-agent] Deferring early session.idle:", {
-        elapsedMs,
-        remainingMs,
-        taskId: task.id,
-      })
-      const timer = setTimeout(() => {
-        idleDeferralTimers.delete(task.id)
-        emitIdleEvent(sessionID)
-      }, remainingMs)
-      idleDeferralTimers.set(task.id, timer)
-    } else {
-      log("[background-agent] session.idle already deferred:", { elapsedMs, taskId: task.id })
+    const existingTimer = idleDeferralTimers.get(task.id)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      idleDeferralTimers.delete(task.id)
     }
+    log("[background-agent] Deferring early session.idle:", {
+      elapsedMs,
+      remainingMs,
+      taskId: task.id,
+    })
+    const timer = setTimeout(() => {
+      idleDeferralTimers.delete(task.id)
+      emitIdleEvent(sessionID)
+    }, remainingMs)
+    idleDeferralTimers.set(task.id, timer)
     return
   }
 

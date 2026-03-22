@@ -1,4 +1,5 @@
 import type { RalphLoopConfig } from "../../config"
+import type { BackgroundManager } from "../../features/background-agent"
 
 export interface RalphLoopState {
   active: boolean
@@ -22,4 +23,5 @@ export interface RalphLoopOptions {
   getTranscriptPath?: (sessionId: string) => string
   apiTimeout?: number
   checkSessionExists?: (sessionId: string) => Promise<boolean>
+  backgroundManager?: BackgroundManager
 }

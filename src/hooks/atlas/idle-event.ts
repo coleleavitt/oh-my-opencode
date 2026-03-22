@@ -16,11 +16,10 @@ const FAILURE_BACKOFF_MS = 5 * 60 * 1000
 const MAX_CONSECUTIVE_PROMPT_FAILURES = 10
 const RETRY_DELAY_MS = CONTINUATION_COOLDOWN_MS + 1000
 
-function hasRunningBackgroundTasks(sessionID: string, options?: AtlasHookOptions): boolean {
+function isBackgroundWorkUnsettled(sessionID: string, options?: AtlasHookOptions): boolean {
   const backgroundManager = options?.backgroundManager
-  return backgroundManager
-    ? backgroundManager.getTasksByParentSession(sessionID).some((task: { status: string }) => task.status === "running")
-    : false
+  if (!backgroundManager) return false
+  return !backgroundManager.isSessionSettled(sessionID)
 }
 
 async function injectContinuation(input: {
@@ -88,7 +87,7 @@ function scheduleRetry(input: {
     const currentProgress = getPlanProgress(currentBoulder.active_plan)
     if (currentProgress.isComplete) return
     if (options?.isContinuationStopped?.(sessionID)) return
-    if (hasRunningBackgroundTasks(sessionID, options)) return
+    if (isBackgroundWorkUnsettled(sessionID, options)) return
 
     await injectContinuation({
       ctx,
@@ -166,8 +165,8 @@ export async function handleAtlasSessionIdle(input: {
     sessionState.lastFailureAt = undefined
   }
 
-  if (hasRunningBackgroundTasks(sessionID, options)) {
-    log(`[${HOOK_NAME}] Skipped: background tasks running`, { sessionID })
+  if (isBackgroundWorkUnsettled(sessionID, options)) {
+    log(`[${HOOK_NAME}] Skipped: background tasks running or notifications pending`, { sessionID })
     return
   }
 

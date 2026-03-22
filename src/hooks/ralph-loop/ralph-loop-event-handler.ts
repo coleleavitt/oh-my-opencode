@@ -1,4 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin"
+import type { BackgroundManager } from "../../features/background-agent"
 import { log } from "../../shared/logger"
 import type { RalphLoopOptions, RalphLoopState } from "./types"
 import { HOOK_NAME } from "./constants"
@@ -25,7 +26,7 @@ type LoopStateController = {
 	setVerificationSessionID: (sessionID: string, verificationSessionID: string) => RalphLoopState | null
 	restartAfterFailedVerification: (sessionID: string, messageCountAtStart?: number) => RalphLoopState | null
 }
-type RalphLoopEventHandlerOptions = { directory: string; apiTimeoutMs: number; getTranscriptPath: (sessionID: string) => string | undefined; checkSessionExists?: RalphLoopOptions["checkSessionExists"]; sessionRecovery: SessionRecovery; loopState: LoopStateController }
+type RalphLoopEventHandlerOptions = { directory: string; apiTimeoutMs: number; getTranscriptPath: (sessionID: string) => string | undefined; checkSessionExists?: RalphLoopOptions["checkSessionExists"]; sessionRecovery: SessionRecovery; loopState: LoopStateController; backgroundManager?: BackgroundManager }
 
 export function createRalphLoopEventHandler(
 	ctx: PluginInput,
@@ -49,12 +50,17 @@ export function createRalphLoopEventHandler(
 
 			try {
 
-				if (options.sessionRecovery.isRecovering(sessionID)) {
-					log(`[${HOOK_NAME}] Skipped: in recovery`, { sessionID })
-					return
-				}
+			if (options.sessionRecovery.isRecovering(sessionID)) {
+				log(`[${HOOK_NAME}] Skipped: in recovery`, { sessionID })
+				return
+			}
 
-				const state = options.loopState.getState()
+			if (options.backgroundManager && !options.backgroundManager.isSessionSettled(sessionID)) {
+				log(`[${HOOK_NAME}] Skipped: background tasks running or notifications pending`, { sessionID })
+				return
+			}
+
+			const state = options.loopState.getState()
 				if (!state || !state.active) {
 					return
 				}

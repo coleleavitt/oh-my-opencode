@@ -46,6 +46,7 @@ export function createRalphLoopHook(
   const getTranscriptPath = options?.getTranscriptPath ?? getDefaultTranscriptPath
   const apiTimeout = options?.apiTimeout ?? DEFAULT_API_TIMEOUT
   const checkSessionExists = options?.checkSessionExists
+  const backgroundManager = options?.backgroundManager
 
 	const loopState = createLoopStateController({
 		directory: ctx.directory,
@@ -61,6 +62,7 @@ export function createRalphLoopHook(
 		checkSessionExists,
 		sessionRecovery,
 		loopState,
+		backgroundManager,
 	})
 
 	return {

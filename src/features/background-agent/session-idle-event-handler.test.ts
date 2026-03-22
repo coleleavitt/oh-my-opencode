@@ -159,7 +159,7 @@ describe("handleSessionIdleBackgroundEvent", () => {
       }
     })
 
-    it("#when idle already deferred #then should not create duplicate timer", () => {
+    it("#when idle already deferred #then should replace stale timer with fresh one", () => {
       //#given
       const realDateNow = Date.now
       const baseNow = realDateNow()
@@ -185,8 +185,11 @@ describe("handleSessionIdleBackgroundEvent", () => {
         })
 
         //#then
-        expect(idleDeferralTimers.get(task.id)).toBe(existingTimer)
+        const newTimer = idleDeferralTimers.get(task.id)
+        expect(newTimer).toBeDefined()
+        expect(newTimer).not.toBe(existingTimer)
       } finally {
+        clearTimeout(idleDeferralTimers.get(task.id)!)
         clearTimeout(existingTimer)
         Date.now = realDateNow
       }

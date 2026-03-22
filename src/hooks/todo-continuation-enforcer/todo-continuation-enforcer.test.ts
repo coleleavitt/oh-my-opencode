@@ -233,6 +233,8 @@ describe("todo-continuation-enforcer", () => {
       getTasksByParentSession: () => runningTasks
         ? [{ status: "running" }]
         : [],
+      hasNotificationsPending: () => false,
+      isSessionSettled: () => !runningTasks,
     } as any
   }
 

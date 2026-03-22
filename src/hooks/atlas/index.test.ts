@@ -1413,6 +1413,7 @@ session_id: ses_untrusted_999
 
        const mockBackgroundManager = {
          getTasksByParentSession: () => [{ status: "running" }],
+         isSessionSettled: () => false,
        }
 
        const mockInput = createMockPluginInput()

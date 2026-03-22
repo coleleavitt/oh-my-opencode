@@ -18,6 +18,7 @@ import {
 import { setSessionTools } from "../../shared/session-tools-store"
 import { SessionCategoryRegistry } from "../../shared/session-category-registry"
 import { ConcurrencyManager } from "./concurrency"
+import { isSessionSettled as isSessionSettledFn } from "./session-settlement-checker"
 import type { BackgroundTaskConfig, TmuxConfig } from "../../config/schema"
 import { isInsideTmux } from "../../shared/tmux"
 import {
@@ -1150,6 +1151,21 @@ export class BackgroundManager {
 
   clearNotifications(sessionID: string): void {
     this.notifications.delete(sessionID)
+  }
+
+  hasNotificationsPending(sessionID: string): boolean {
+    const pendingNotifs = this.pendingNotifications.get(sessionID)
+    if (pendingNotifs && pendingNotifs.length > 0) return true
+    return this.notificationQueueByParent.has(sessionID)
+  }
+
+  isSessionSettled(sessionID: string): boolean {
+    return isSessionSettledFn({
+      tasks: this.tasks.values(),
+      sessionID,
+      pendingNotifications: this.pendingNotifications,
+      notificationQueueByParent: this.notificationQueueByParent,
+    })
   }
 
   queuePendingNotification(sessionID: string | undefined, notification: string): void {

@@ -1,4 +1,5 @@
 import type { OhMyOpenCodeConfig, HookName } from "../../config"
+import type { BackgroundManager } from "../../features/background-agent"
 import type { ModelCacheState } from "../../plugin-state"
 import type { PluginContext } from "../types"
 
@@ -68,8 +69,9 @@ export function createSessionHooks(args: {
   modelCacheState: ModelCacheState
   isHookEnabled: (hookName: HookName) => boolean
   safeHookEnabled: boolean
+  backgroundManager: BackgroundManager
 }): SessionHooks {
-  const { ctx, pluginConfig, modelCacheState, isHookEnabled, safeHookEnabled } = args
+  const { ctx, pluginConfig, modelCacheState, isHookEnabled, safeHookEnabled, backgroundManager } = args
   const safeHook = <T>(hookName: HookName, factory: () => T): T | null =>
     safeCreateHook(hookName, factory, { enabled: safeHookEnabled })
 
@@ -204,6 +206,7 @@ export function createSessionHooks(args: {
         createRalphLoopHook(ctx, {
           config: pluginConfig.ralph_loop,
           checkSessionExists: async (sessionId) => await sessionExists(sessionId),
+          backgroundManager,
         }))
     : null
 

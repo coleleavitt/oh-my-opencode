@@ -59,12 +59,12 @@ export async function handleSessionIdle(args: {
     state.abortDetectedAt = undefined
   }
 
-  const hasRunningBgTasks = backgroundManager
-    ? backgroundManager.getTasksByParentSession(sessionID).some((task: { status: string }) => task.status === "running")
-    : false
+  const sessionSettled = backgroundManager
+    ? backgroundManager.isSessionSettled(sessionID)
+    : true
 
-  if (hasRunningBgTasks) {
-    log(`[${HOOK_NAME}] Skipped: background tasks running`, { sessionID })
+  if (!sessionSettled) {
+    log(`[${HOOK_NAME}] Skipped: background tasks running or notifications pending`, { sessionID })
     return
   }
 
@@ -97,14 +97,12 @@ export async function handleSessionIdle(args: {
 
   if (!todos || todos.length === 0) {
     sessionStateStore.resetContinuationProgress(sessionID)
-    sessionStateStore.resetContinuationProgress(sessionID)
     log(`[${HOOK_NAME}] No todos`, { sessionID })
     return
   }
 
   const incompleteCount = getIncompleteCount(todos)
   if (incompleteCount === 0) {
-    sessionStateStore.resetContinuationProgress(sessionID)
     sessionStateStore.resetContinuationProgress(sessionID)
     log(`[${HOOK_NAME}] All todos complete`, { sessionID, total: todos.length })
     return

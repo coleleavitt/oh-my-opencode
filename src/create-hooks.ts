@@ -52,6 +52,7 @@ export function createHooks(args: {
     modelCacheState,
     isHookEnabled,
     safeHookEnabled,
+    backgroundManager,
   })
 
   const continuation = createContinuationHooks({
