@@ -173,6 +173,24 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       { providers: ["opencode"], model: "big-pickle" },
     ],
   },
+  "cubic-reviewer": {
+    fallbackChain: [
+      {
+        providers: ["anthropic", "github-copilot", "opencode"],
+        model: "claude-opus-4-6",
+      },
+      {
+        providers: ["openai", "github-copilot", "opencode"],
+        model: "gpt-5.4",
+        variant: "medium",
+      },
+      {
+        providers: ["google", "github-copilot", "opencode"],
+        model: "gemini-3.1-pro",
+      },
+      { providers: ["anthropic", "github-copilot", "opencode"], model: "claude-sonnet-4-6" },
+    ],
+  },
 };
 
 export const CATEGORY_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {

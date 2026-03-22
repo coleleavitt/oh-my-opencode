@@ -22,6 +22,8 @@ import {
   buildStandaloneVerificationReminder,
 } from "./verification-reminders"
 import { isWriteOrEditToolName } from "./write-edit-tool-policy"
+
+const AUTO_REVIEW_WRITE_THRESHOLD = 5
 import type { PendingTaskRef, SessionState } from "./types"
 import type { ToolExecuteAfterInput, ToolExecuteAfterOutput, TrackedTopLevelTaskRef } from "./types"
 
@@ -68,6 +70,26 @@ function resolveTaskContext(
   }
 }
 
+const sessionWriteCounts = new Map<string, number>()
+const sessionReviewSuggested = new Set<string>()
+
+const AUTO_REVIEW_REMINDER = `
+
+<system-reminder>
+[CUBIC REVIEWER - POST-IMPLEMENTATION REVIEW AVAILABLE]
+
+You have made ${AUTO_REVIEW_WRITE_THRESHOLD}+ file edits in this session. Consider running a review before committing:
+
+**Option 1**: Delegate to cubic-reviewer sub-agent:
+\`\`\`
+task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")
+\`\`\`
+
+**Option 2**: Use the /review command directly.
+
+This is a suggestion, not a requirement. Skip if changes are trivial or already reviewed.
+</system-reminder>`
+
 export function createToolExecuteAfterHandler(input: {
   ctx: PluginInput
   pendingFilePaths: Map<string, string>
@@ -96,6 +118,20 @@ export function createToolExecuteAfterHandler(input: {
       }
       if (filePath && !isSisyphusPath(filePath)) {
         toolOutput.output = (toolOutput.output || "") + DIRECT_WORK_REMINDER
+
+        if (toolInput.sessionID) {
+          const writeCount = (sessionWriteCounts.get(toolInput.sessionID) ?? 0) + 1
+          sessionWriteCounts.set(toolInput.sessionID, writeCount)
+
+          if (writeCount >= AUTO_REVIEW_WRITE_THRESHOLD && !sessionReviewSuggested.has(toolInput.sessionID)) {
+            sessionReviewSuggested.add(toolInput.sessionID)
+            toolOutput.output += AUTO_REVIEW_REMINDER
+            log(`[${HOOK_NAME}] Auto-review suggestion injected after ${writeCount} writes`, {
+              sessionID: toolInput.sessionID,
+            })
+          }
+        }
+
         log(`[${HOOK_NAME}] Direct work reminder appended`, {
           sessionID: toolInput.sessionID,
           tool: toolInput.tool,
