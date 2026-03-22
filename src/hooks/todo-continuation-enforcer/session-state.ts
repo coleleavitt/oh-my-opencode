@@ -92,6 +92,7 @@ export function createSessionStateStore(): SessionStateStore {
     const rawState: SessionState = {
       stagnationCount: 0,
       consecutiveFailures: 0,
+      consecutiveCompactions: 0,
     }
     const trackedSession: TrackedSessionState = {
       state: rawState,
@@ -160,6 +161,7 @@ export function createSessionStateStore(): SessionStateStore {
 
     if (progressSource !== "none") {
       state.stagnationCount = 0
+      state.consecutiveCompactions = 0
       state.awaitingPostInjectionProgressCheck = false
       return {
         previousIncompleteCount,
@@ -201,6 +203,7 @@ export function createSessionStateStore(): SessionStateStore {
 
     state.lastIncompleteCount = undefined
     state.stagnationCount = 0
+    state.consecutiveCompactions = 0
     state.awaitingPostInjectionProgressCheck = false
     trackedSession.lastCompletedCount = undefined
     trackedSession.lastTodoSnapshot = undefined

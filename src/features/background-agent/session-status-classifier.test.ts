@@ -32,17 +32,17 @@ describe("isActiveSessionStatus", () => {
   })
 
   describe("#given an unknown session status", () => {
-    test('#when type is an arbitrary unknown string #then returns false and logs warning', () => {
+    test('#when type is an arbitrary unknown string #then returns true (safe default) and logs warning', () => {
       mockLog.mockClear()
-      expect(isActiveSessionStatus("some-unknown-status")).toBe(false)
+      expect(isActiveSessionStatus("some-unknown-status")).toBe(true)
       expect(mockLog).toHaveBeenCalledWith(
-        "[background-agent] Unknown session status type encountered:",
+        "[background-agent] Unknown session status type encountered, treating as active:",
         "some-unknown-status",
       )
     })
 
-    test('#when type is empty string #then returns false', () => {
-      expect(isActiveSessionStatus("")).toBe(false)
+    test('#when type is empty string #then returns true (safe default)', () => {
+      expect(isActiveSessionStatus("")).toBe(true)
     })
   })
 })

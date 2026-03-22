@@ -3,7 +3,13 @@ import { QUESTION_DENIED_SESSION_PERMISSION } from "../../shared/question-denied
 
 export async function createSyncSession(
   client: OpencodeClient,
-  input: { parentSessionID: string; agentToUse: string; description: string; defaultDirectory: string }
+  input: {
+    parentSessionID: string
+    agentToUse: string
+    description: string
+    defaultDirectory: string
+    model?: { providerID: string; modelID: string; variant?: string }
+  }
 ): Promise<{ ok: true; sessionID: string; parentDirectory: string } | { ok: false; error: string }> {
   const parentSession = client.session.get
     ? await client.session.get({ path: { id: input.parentSessionID } }).catch(() => null)
@@ -15,6 +21,8 @@ export async function createSyncSession(
       parentID: input.parentSessionID,
       title: `${input.description} (@${input.agentToUse} subagent)`,
       permission: QUESTION_DENIED_SESSION_PERMISSION,
+      ...(input.model ? { model: { providerID: input.model.providerID, modelID: input.model.modelID } } : {}),
+      ...(input.model?.variant ? { variant: input.model.variant } : {}),
     } as Record<string, unknown>,
     query: {
       directory: parentDirectory,

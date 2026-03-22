@@ -173,7 +173,7 @@ describe("BackgroundManager pollRunningTasks", () => {
       expect(task.completedAt).toBeDefined()
     })
 
-    test('#when session status is an unknown type #then completes the task', async () => {
+    test('#when session status is an unknown type #then treats as active and keeps task running', async () => {
       //#given
       const manager = createManagerWithClient({
         status: async () => ({ data: { "ses-unknown": { type: "some-weird-status" } } }),
@@ -186,9 +186,8 @@ describe("BackgroundManager pollRunningTasks", () => {
       await poll.call(manager)
       manager.shutdown()
 
-      //#then
-      expect(task.status).toBe("completed")
-      expect(task.completedAt).toBeDefined()
+      //#then — unknown status treated as active to avoid premature completion
+      expect(task.status).toBe("running")
     })
   })
 })

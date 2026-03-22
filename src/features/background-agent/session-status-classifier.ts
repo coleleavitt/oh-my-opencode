@@ -9,7 +9,10 @@ export function isActiveSessionStatus(type: string): boolean {
   }
 
   if (!KNOWN_TERMINAL_STATUSES.has(type)) {
-    log("[background-agent] Unknown session status type encountered:", type)
+    // Unknown status — treat as active to avoid premature stale cancellation.
+    // Better to wait for a known terminal status than to kill a running task.
+    log("[background-agent] Unknown session status type encountered, treating as active:", type)
+    return true
   }
 
   return false

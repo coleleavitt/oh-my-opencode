@@ -12,6 +12,7 @@ import {
   FAILURE_RESET_WINDOW_MS,
   HOOK_NAME,
   MAX_CONSECUTIVE_FAILURES,
+  MAX_CONSECUTIVE_COMPACTIONS,
 } from "./constants"
 import { isLastAssistantMessageAborted } from "./abort-detection"
 import { hasUnansweredQuestion } from "./pending-question-detection"
@@ -165,6 +166,12 @@ export async function handleSessionIdle(args: {
   }
   if (state.recentCompactionAt && resolvedInfo?.agent) {
     state.recentCompactionAt = undefined
+  }
+
+  // Circuit breaker: stop continuation if session is stuck in compaction loop
+  if ((state.consecutiveCompactions ?? 0) >= MAX_CONSECUTIVE_COMPACTIONS) {
+    log(`[${HOOK_NAME}] Skipped: compaction loop detected (${state.consecutiveCompactions} consecutive compactions). Session context is too large for remaining tasks.`, { sessionID })
+    return
   }
 
   if (isContinuationStopped?.(sessionID)) {

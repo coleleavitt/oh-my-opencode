@@ -443,7 +443,7 @@ describe("checkAndInterruptStaleTasks", () => {
     expect(task.error).toContain("Stale timeout")
   })
 
-  it('should NOT protect task when session has unknown status type', async () => {
+  it('should protect task when session has unknown status type (safe default)', async () => {
     //#given — lastUpdate is 5min old, session has an unknown status
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 300_000),
@@ -453,7 +453,7 @@ describe("checkAndInterruptStaleTasks", () => {
       },
     })
 
-    //#when — session has unknown status type
+    //#when — session has unknown status type (treated as active to avoid premature cancellation)
     await checkAndInterruptStaleTasks({
       tasks: [task],
       client: mockClient as never,
@@ -463,9 +463,8 @@ describe("checkAndInterruptStaleTasks", () => {
       sessionStatuses: { "ses-1": { type: "some-weird-status" } },
     })
 
-    //#then — unknown statuses should not protect from stale timeout
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    //#then — unknown statuses treated as active, task should NOT be cancelled
+    expect(task.status).toBe("running")
   })
 })
 

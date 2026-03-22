@@ -50,6 +50,7 @@ export async function executeSyncTask(
       agentToUse,
       description: args.description,
       defaultDirectory: directory,
+      model: categoryModel,
     })
 
     if (!createSessionResult.ok) {
