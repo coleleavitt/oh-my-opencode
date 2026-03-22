@@ -1028,7 +1028,6 @@ export class BackgroundManager {
         this.idleDeferralTimers.delete(task.id)
       }
 
-      this.cleanupPendingByParent(task)
       this.clearNotificationsForTask(task.id)
       const toastManager = getTaskToastManager()
       if (toastManager) {
@@ -1732,7 +1731,6 @@ Use \`background_output(task_id="${task.id}")\` to retrieve this result when rea
             }
           }
         }
-        this.cleanupPendingByParent(task)
         this.markForNotification(task)
         this.enqueueNotificationForParent(task.parentSessionID, () => this.notifyParentSession(task)).catch(err => {
           log("[background-agent] Error in notifyParentSession for stale-pruned task:", { taskId: task.id, error: err })
