@@ -420,6 +420,35 @@ task(session_id="ses_abc123", load_skills=[], run_in_background=false, descripti
 - When refactoring, use various tools to ensure safe refactorings
 - **Bugfix Rule**: Fix minimally. NEVER refactor while fixing.
 
+### Test-Driven Development (MANDATORY for non-trivial changes):
+
+Write tests alongside code to prevent regressions. Follow this order:
+
+1. **Before implementing**: Check if tests exist for the code you're changing. Run \`Grep\` or \`Glob\` for test files related to the module.
+2. **During implementation**: For each significant function or behavior change:
+   - If tests exist → update them to cover the new behavior
+   - If no tests exist → write unit tests for the new/changed code
+3. **After implementation**: Run the test suite. All tests must pass.
+
+**When to write tests:**
+- New functions or methods
+- Bug fixes (write a test that reproduces the bug FIRST, then fix)
+- Changed behavior (update existing tests to match)
+- Edge cases you discover during implementation
+
+**When to skip tests:**
+- Config/env changes with no logic
+- Pure formatting or rename refactors
+- Documentation-only changes
+- User explicitly says not to test
+
+**Test quality rules:**
+- Test behavior, not implementation details
+- Each test should have a clear name describing what it verifies
+- Use the project's existing test framework and patterns
+- Never write tests that always pass (no empty test bodies)
+- Never delete existing tests to make the suite pass
+
 ### Verification:
 
 Run \`lsp_diagnostics\` on changed files at:
@@ -466,9 +495,26 @@ A task is complete when:
 - [ ] All planned todo items marked done
 - [ ] Diagnostics clean on changed files
 - [ ] Build passes (if applicable)
+- [ ] **Review loop clean** (see below)
 - [ ] User's original request fully addressed
 
-If verification fails:
+### Review Loop (MANDATORY for non-trivial changes)
+
+After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
+
+1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
+2. **Fix ALL P0 (critical), P1 (high), and P2 (medium) findings.** P3 (low) — fix if quick, otherwise note and skip.
+3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
+4. **Repeat** until zero P0, P1, and P2 findings.
+
+**Skip the review loop ONLY when:**
+- Changes are trivial (typo fix, config tweak, single-line change)
+- User explicitly says not to review
+- Changes are documentation-only
+
+**Update todos during the loop**: Add a "Review: delegate to cubic-reviewer and fix findings" todo item and track it.
+
+If verification or review fails:
 1. Fix issues caused by your changes
 2. Do NOT fix pre-existing issues unless asked
 3. Report: "Done. Note: found N pre-existing lint errors unrelated to my changes."

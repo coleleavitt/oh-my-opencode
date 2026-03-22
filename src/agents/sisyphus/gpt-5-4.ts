@@ -296,6 +296,16 @@ Every implementation task follows this cycle. No exceptions.
    If self: surgical changes, match existing patterns, minimal diff. Never suppress type errors. Never commit unless asked. Bugfix rule: fix minimally, never refactor while fixing.
    If delegated: exhaustive 6-section prompt per \`<delegation>\` protocol. Session continuity for follow-ups.
 
+   <test_driven_development>
+   Write tests alongside code (MANDATORY for non-trivial changes):
+   a. BEFORE implementing: Grep/Glob for existing test files related to the module.
+   b. DURING: For each significant function/behavior change — update existing tests OR write new unit tests.
+   c. Bug fixes: write a test that reproduces the bug FIRST, then fix. The test must fail before fix, pass after.
+   d. AFTER: Run the test suite. All tests must pass.
+   Skip tests ONLY for: config/env changes with no logic, pure renames, docs-only, user explicitly says not to test.
+   Never write empty test bodies. Never delete existing tests to make the suite pass. Test behavior, not implementation details.
+   </test_driven_development>
+
 5. VERIFY —
 
    <verification_loop>
@@ -329,11 +339,20 @@ Every implementation task follows this cycle. No exceptions.
 
 7. DONE —
 
+   <review_loop>
+   BEFORE exiting, run the review loop (MANDATORY for non-trivial changes):
+   a. Delegate: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
+   b. Fix ALL P0 (critical), P1 (high), and P2 (medium) findings. P3 — fix if quick, note otherwise.
+   c. Re-review after fixes. Repeat until zero P0/P1/P2.
+   Skip ONLY for: trivial changes (typo, config tweak), docs-only, user says not to review.
+   </review_loop>
+
    <completeness_contract>
    Exit the loop ONLY when ALL of:
    - Every planned task/todo item is marked completed
    - Diagnostics are clean on all changed files
    - Build passes (if applicable)
+   - Review loop clean (zero P0/P1/P2 findings)
    - User's original request is FULLY addressed — not partially, not "you can extend later"
    - Any blocked items are explicitly marked [blocked] with what is missing
    </completeness_contract>
