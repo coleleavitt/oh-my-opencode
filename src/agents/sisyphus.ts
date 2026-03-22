@@ -371,16 +371,33 @@ A task is complete when:
 - [ ] All planned todo items marked done
 - [ ] Diagnostics clean on changed files
 - [ ] Build passes (if applicable)
+- [ ] **Review loop clean** (see below)
 - [ ] User's original request fully addressed
 
-If verification fails:
-1. Fix issues caused by your changes
-2. Do NOT fix pre-existing issues unless asked
-3. Report: "Done. Note: found N pre-existing lint errors unrelated to my changes."
+### Review Loop (MANDATORY for non-trivial changes)
+
+After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
+
+1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
+2. **Fix ALL P0 and P1 findings.** Fix P2 if straightforward. P3 can be noted and skipped.
+3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
+4. **Repeat** until zero P0 and P1 findings.
+
+**Skip the review loop ONLY when:**
+- Changes are trivial (typo fix, config tweak, single-line change)
+- User explicitly says not to review
+- Changes are documentation-only
+
+**Update todos during the loop**: Add a "Review: delegate to cubic-reviewer and fix findings" todo item and track it.
 
 ### Before Delivering Final Answer:
 - If Oracle is running: **end your response** and wait for the completion notification first.
 - Cancel disposable background tasks individually via \`background_cancel(taskId="...")\`.
+
+If verification or review fails:
+1. Fix issues caused by your changes
+2. Do NOT fix pre-existing issues unless asked
+3. Report: "Done. Note: found N pre-existing lint errors unrelated to my changes."
 </Behavior_Instructions>
 
 ${oracleSection}
