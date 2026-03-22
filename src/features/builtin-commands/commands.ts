@@ -6,6 +6,7 @@ import { STOP_CONTINUATION_TEMPLATE } from "./templates/stop-continuation"
 import { REFACTOR_TEMPLATE } from "./templates/refactor"
 import { START_WORK_TEMPLATE } from "./templates/start-work"
 import { HANDOFF_TEMPLATE } from "./templates/handoff"
+import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review"
 
 const BUILTIN_COMMAND_DEFINITIONS: Record<BuiltinCommandName, Omit<CommandDefinition, "name">> = {
   "init-deep": {
@@ -77,6 +78,28 @@ $ARGUMENTS
     template: `<command-instruction>
 ${STOP_CONTINUATION_TEMPLATE}
 </command-instruction>`,
+  },
+  review: {
+    description: "(builtin) Review code changes for P0-P3 bugs, security issues, and logic errors using cubic-reviewer",
+    template: `<command-instruction>
+${REVIEW_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+    argumentHint: "[--commit <hash>] [--base <branch>] [--security] [--fix] [<custom instructions>]",
+  },
+  "review-loop": {
+    description: "(builtin) Run review→fix→re-review loop until zero P0/P1 issues remain",
+    template: `<command-instruction>
+${REVIEW_LOOP_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+    argumentHint: "[scope description]",
   },
   handoff: {
     description: "(builtin) Create a detailed context summary for continuing work in a new session",
