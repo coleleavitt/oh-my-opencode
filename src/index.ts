@@ -12,7 +12,8 @@ import { createPluginDispose, type PluginDispose } from "./plugin-dispose"
 import { loadPluginConfig } from "./plugin-config"
 import { createModelCacheState } from "./plugin-state"
 import { createFirstMessageVariantGate } from "./shared/first-message-variant"
-import { injectServerAuthIntoClient, log } from "./shared"
+import { injectServerAuthIntoClient, log, logLegacyPluginStartupWarning } from "./shared"
+import { detectExternalSkillPlugin, getSkillPluginConflictWarning } from "./shared/external-plugin-detector"
 import { startTmuxCheck } from "./tools"
 
 let activePluginDispose: PluginDispose | null = null
@@ -23,6 +24,13 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
   log("[OhMyOpenCodePlugin] ENTRY - plugin loading", {
     directory: ctx.directory,
   })
+  logLegacyPluginStartupWarning()
+
+  // Detect conflicting skill plugins (e.g., opencode-skills)
+  const skillPluginCheck = detectExternalSkillPlugin(ctx.directory)
+  if (skillPluginCheck.detected && skillPluginCheck.pluginName) {
+    console.warn(getSkillPluginConflictWarning(skillPluginCheck.pluginName))
+  }
 
   injectServerAuthIntoClient(ctx.client)
   startTmuxCheck()
@@ -42,6 +50,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     main_pane_size: pluginConfig.tmux?.main_pane_size ?? 60,
     main_pane_min_width: pluginConfig.tmux?.main_pane_min_width ?? 120,
     agent_pane_min_width: pluginConfig.tmux?.agent_pane_min_width ?? 40,
+    isolation: pluginConfig.tmux?.isolation ?? "session",
   }
 
   const modelCacheState = createModelCacheState()
@@ -89,6 +98,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
   activePluginDispose = dispose
 
   return {
+    name: "oh-my-openagent",
     ...pluginInterface,
 
     "experimental.session.compacting": async (

@@ -1,4 +1,4 @@
-import type { DelegateTaskArgs, ToolContextWithMetadata } from "./types"
+import type { DelegateTaskArgs, ToolContextWithMetadata, DelegatedModelConfig } from "./types"
 import type { ExecutorContext, ParentContext } from "./executor-types"
 import type { FallbackEntry } from "../../shared/model-requirements"
 import { getTimingConfig } from "./timing"
@@ -8,6 +8,7 @@ import { formatDetailedError } from "./error-formatting"
 import { getSessionTools } from "../../shared/session-tools-store"
 import { SessionCategoryRegistry } from "../../shared/session-category-registry"
 import { QUESTION_DENIED_SESSION_PERMISSION } from "../../shared/question-denied-session-permission"
+import { setSessionFallbackChain } from "../../hooks/model-fallback/hook"
 
 export async function executeBackgroundTask(
   args: DelegateTaskArgs,
@@ -15,14 +16,15 @@ export async function executeBackgroundTask(
   executorCtx: ExecutorContext,
   parentContext: ParentContext,
   agentToUse: string,
-  categoryModel: { providerID: string; modelID: string; variant?: string } | undefined,
+  categoryModel: DelegatedModelConfig | undefined,
   systemContent: string | undefined,
   fallbackChain?: FallbackEntry[],
 ): Promise<string> {
   const { manager } = executorCtx
 
   try {
-    const effectivePrompt = buildTaskPrompt(args.prompt, agentToUse)
+    const tddEnabled = executorCtx.sisyphusAgentConfig?.tdd
+    const effectivePrompt = buildTaskPrompt(args.prompt, agentToUse, tddEnabled)
     const task = await manager.launch({
       description: args.description,
       prompt: effectivePrompt,
@@ -56,6 +58,9 @@ export async function executeBackgroundTask(
       sessionId = updated?.sessionID
     }
 
+    if (sessionId) {
+      setSessionFallbackChain(sessionId, fallbackChain)
+    }
     if (args.category && sessionId) {
       SessionCategoryRegistry.register(sessionId, args.category)
     }
@@ -82,7 +87,7 @@ export async function executeBackgroundTask(
     }
 
     const taskMetadataBlock = sessionId
-      ? `\n\n<task_metadata>\nsession_id: ${sessionId}\ntask_id: ${sessionId}\nbackground_task_id: ${task.id}\n</task_metadata>`
+      ? `\n\n<task_metadata>\nsession_id: ${sessionId}\ntask_id: ${task.id}\nbackground_task_id: ${task.id}\n</task_metadata>`
       : ""
 
     return `Background task launched.

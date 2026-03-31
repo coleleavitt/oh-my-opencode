@@ -1,8 +1,8 @@
 import type { ToolContextWithMetadata, OpencodeClient } from "./types";
 import type { SessionMessage } from "./executor-types";
-import { getDefaultSyncPollTimeoutMs } from "./timing";
+import { getDefaultSyncPollTimeoutMs, getTimingConfig } from "./timing";
 import { log } from "../../shared/logger";
-import { waitForSessionWithTimeout } from "./event-session-waiter";
+import { normalizeSDKResponse } from "../../shared";
 
 const NON_TERMINAL_FINISH_REASONS = new Set(["tool-calls", "unknown"]);
 
@@ -23,47 +23,129 @@ export function isSessionComplete(messages: SessionMessage[]): boolean {
   return lastUser.info.id < lastAssistant.info.id;
 }
 
-/**
- * Wait for sync session completion using SSE events.
- * Falls back to safety timeout if events don't fire.
- */
+const DEFAULT_MAX_ASSISTANT_TURNS = 300
+
 export async function pollSyncSession(
   ctx: ToolContextWithMetadata,
   client: OpencodeClient,
   input: {
-    sessionID: string;
-    agentToUse: string;
-    toastManager: { removeTask: (id: string) => void } | null | undefined;
-    taskId: string | undefined;
-    anchorMessageCount?: number;
-    directory?: string;
+    sessionID: string
+    agentToUse: string
+    toastManager: { removeTask: (id: string) => void } | null | undefined
+    taskId: string | undefined
+    anchorMessageCount?: number
+    maxAssistantTurns?: number
   },
   timeoutMs?: number,
 ): Promise<string | null> {
-  const maxWaitMs = Math.max(timeoutMs ?? getDefaultSyncPollTimeoutMs(), 50);
-  const dir = input.directory ?? process.cwd();
+  const syncTiming = getTimingConfig()
+  const maxPollTimeMs = Math.max(timeoutMs ?? getDefaultSyncPollTimeoutMs(), 50)
+  const maxTurns = input.maxAssistantTurns ?? DEFAULT_MAX_ASSISTANT_TURNS
+  const pollStart = Date.now()
+  let pollCount = 0
+  let timedOut = false
+  let assistantTurnCount = 0
+  let lastSeenAssistantId: string | undefined
 
-  log("[task] Starting event-driven wait", {
-    sessionID: input.sessionID,
-    agentToUse: input.agentToUse,
-  });
+  log("[task] Starting poll loop", { sessionID: input.sessionID, agentToUse: input.agentToUse, maxTurns })
 
-  const result = await waitForSessionWithTimeout(client, {
-    sessionID: input.sessionID,
-    directory: dir,
-    abort: ctx.abort,
-    maxWaitMs,
-    onActivity: () => {
-      log("[task] Activity detected", { sessionID: input.sessionID });
-    },
-  });
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-  if (result) {
-    if (input.toastManager && input.taskId)
-      input.toastManager.removeTask(input.taskId);
-    return result;
+  while (!timedOut) {
+    if (ctx.abort?.aborted) {
+      log("[task] Sync session aborted by context", { sessionID: input.sessionID })
+      return null
+    }
+
+    if (Date.now() - pollStart >= maxPollTimeMs) {
+      timedOut = true
+      log("[task] Poll timed out", { sessionID: input.sessionID, pollCount, maxPollTimeMs })
+      break
+    }
+
+    await wait(syncTiming.POLL_INTERVAL_MS)
+    pollCount++
+
+    let statusResult: { data?: Record<string, { type: string }> }
+    try {
+      statusResult = await client.session.status()
+    } catch (error) {
+      log("[task] Poll status fetch failed, retrying", { sessionID: input.sessionID, error: String(error) })
+      continue
+    }
+    const allStatuses = normalizeSDKResponse(statusResult, {} as Record<string, { type: string }>)
+    const sessionStatus = allStatuses[input.sessionID]
+
+    if (pollCount % 10 === 0) {
+      log("[task] Poll status", {
+        sessionID: input.sessionID,
+        pollCount,
+        elapsed: Math.floor((Date.now() - pollStart) / 1000) + "s",
+        sessionStatus: sessionStatus?.type ?? "not_in_status",
+      })
+    }
+
+    if (sessionStatus && sessionStatus.type !== "idle") {
+      continue
+    }
+
+    let messagesResult: { data?: unknown } | SessionMessage[]
+    try {
+      messagesResult = await client.session.messages({ path: { id: input.sessionID } })
+    } catch (error) {
+      log("[task] Poll messages fetch failed, retrying", { sessionID: input.sessionID, error: String(error) })
+      continue
+    }
+    const rawData = (messagesResult as { data?: unknown })?.data ?? messagesResult
+    const msgs = Array.isArray(rawData) ? (rawData as SessionMessage[]) : []
+
+    if (input.anchorMessageCount !== undefined && msgs.length <= input.anchorMessageCount) {
+      continue
+    }
+
+    if (isSessionComplete(msgs)) {
+      log("[task] Poll complete - terminal finish detected", { sessionID: input.sessionID, pollCount })
+      break
+    }
+
+    const lastAssistant = [...msgs].reverse().find((m) => m.info?.role === "assistant")
+    if (lastAssistant?.info?.id && lastAssistant.info.id !== lastSeenAssistantId) {
+      lastSeenAssistantId = lastAssistant.info.id
+      assistantTurnCount++
+      if (assistantTurnCount >= maxTurns) {
+        log("[task] Max assistant turns reached, aborting to prevent infinite loop", {
+          sessionID: input.sessionID,
+          assistantTurnCount,
+          maxTurns,
+        })
+        await client.session.abort({ path: { id: input.sessionID } }).catch(() => {})
+        if (input.toastManager && input.taskId) input.toastManager.removeTask(input.taskId)
+        return `Task aborted: subagent exceeded ${maxTurns} assistant turns without completing. This usually indicates an infinite tool-call loop. Session ID: ${input.sessionID}`
+      }
+    }
+
+    const hasAssistantText = msgs.some((m) => {
+      if (m.info?.role !== "assistant") return false
+      const parts = m.parts ?? []
+      return parts.some((p) => {
+        if (p.type !== "text" && p.type !== "reasoning") return false
+        const text = (p.text ?? "").trim()
+        return text.length > 0
+      })
+    })
+
+    if (!lastAssistant?.info?.finish && hasAssistantText) {
+      log("[task] Poll complete - assistant text detected (fallback)", {
+        sessionID: input.sessionID,
+        pollCount,
+      })
+      break
+    }
   }
 
-  log("[task] Session completed via events", { sessionID: input.sessionID });
-  return null;
+  if (input.toastManager && input.taskId) {
+    input.toastManager.removeTask(input.taskId)
+  }
+
+  return null
 }

@@ -14,7 +14,7 @@ import { shouldPauseForFinalWaveApproval } from "./final-wave-approval-gate"
 import { HOOK_NAME } from "./hook-name"
 import { DIRECT_WORK_REMINDER } from "./system-reminder-templates"
 import { isSisyphusPath } from "./sisyphus-path"
-import { extractSessionIdFromOutput, validateSubagentSessionId } from "./subagent-session-id"
+import { extractSessionIdFromMetadata, extractSessionIdFromOutput, validateSubagentSessionId } from "./subagent-session-id"
 import {
   buildCompletionGate,
   buildFinalWaveApprovalReminder,
@@ -150,7 +150,9 @@ export function createToolExecuteAfterHandler(input: {
       return
     }
 
-    if (toolInput.tool !== "task") {
+    const metadataSessionId = extractSessionIdFromMetadata(toolOutput.metadata)
+    const isPluginToolWithSession = toolInput.tool !== "task" && !!metadataSessionId
+    if (toolInput.tool !== "task" && !isPluginToolWithSession) {
       return
     }
 
@@ -160,6 +162,7 @@ export function createToolExecuteAfterHandler(input: {
       pendingTaskRefs.delete(toolInput.callID)
     }
     const isBackgroundLaunch = outputStr.includes("Background task launched") || outputStr.includes("Background task continued")
+      || outputStr.includes("Background delegate launched")
     if (isBackgroundLaunch) {
       return
     }
@@ -254,11 +257,13 @@ Report the remaining findings to the user and ask how to proceed.
     }
 
     if (toolOutput.output && typeof toolOutput.output === "string") {
-      const gitStats = collectGitDiffStats(ctx.directory)
-      const fileChanges = formatFileChanges(gitStats)
-      const extractedSessionId = extractSessionIdFromOutput(toolOutput.output)
-
       const boulderState = readBoulderState(ctx.directory)
+      const worktreePath = boulderState?.worktree_path?.trim()
+      const verificationDirectory = worktreePath ? worktreePath : ctx.directory
+      const gitStats = collectGitDiffStats(verificationDirectory)
+      const fileChanges = formatFileChanges(gitStats)
+      const extractedSessionId = metadataSessionId ?? extractSessionIdFromOutput(toolOutput.output)
+
       if (boulderState) {
         const progress = getPlanProgress(boulderState.active_plan)
         const {

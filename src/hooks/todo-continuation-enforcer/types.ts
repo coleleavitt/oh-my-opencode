@@ -35,7 +35,8 @@ export interface SessionState {
   stagnationCount: number
   consecutiveFailures: number
   recentCompactionAt?: number
-  consecutiveCompactions: number
+  recentCompactionEpoch?: number
+  acknowledgedCompactionEpoch?: number
 }
 
 export interface MessageInfo {

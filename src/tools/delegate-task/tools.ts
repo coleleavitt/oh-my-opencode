@@ -1,5 +1,5 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import type { DelegateTaskArgs, ToolContextWithMetadata, DelegateTaskToolOptions } from "./types"
+import type { DelegateTaskArgs, DelegatedModelConfig, ToolContextWithMetadata, DelegateTaskToolOptions } from "./types"
 import { CATEGORY_DESCRIPTIONS } from "./constants"
 import { SISYPHUS_JUNIOR_AGENT } from "./sisyphus-junior-agent"
 import { mergeCategories } from "../../shared/merge-categories"
@@ -76,13 +76,13 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
   - category: For task delegation (uses Sisyphus-Junior with category-optimized model)
   - subagent_type: For direct agent invocation (explore, librarian, oracle, etc.)
   
-  **DO NOT provide both.** If category is provided, subagent_type is ignored.
+  **DO NOT provide both.** category and subagent_type are mutually exclusive.
   
   - load_skills: ALWAYS REQUIRED. Pass [] if no skills needed, or ["skill-1", "skill-2"] for category tasks.
   - category: Use predefined category → Spawns Sisyphus-Junior with category config
     Available categories:
   ${categoryList}
-  - subagent_type: Use specific agent directly (explore, librarian, oracle, metis, momus)
+  - subagent_type: Use a specific callable non-primary agent directly (for example: explore, librarian, oracle, metis, momus)
   - run_in_background: REQUIRED. true=async (returns task_id), false=sync (waits). Use background=true ONLY for parallel exploration with 5+ independent queries.
   - session_id: Existing Task session to continue (from previous task output). Continues agent with FULL CONTEXT PRESERVED - saves tokens, maintains continuity.
   - command: The command that triggered this task (optional, for slash command tracking).
@@ -102,20 +102,18 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       prompt: tool.schema.string().describe("Full detailed prompt for the agent"),
       run_in_background: tool.schema.boolean().describe("REQUIRED. true=async (returns task_id), false=sync (waits). Use false for task delegation, true ONLY for parallel exploration."),
       category: tool.schema.string().optional().describe(`REQUIRED if subagent_type not provided. Do NOT provide both category and subagent_type.`),
-      subagent_type: tool.schema.string().optional().describe("REQUIRED if category not provided. Do NOT provide both category and subagent_type."),
+      subagent_type: tool.schema.string().optional().describe("REQUIRED if category not provided. Do NOT provide both category and subagent_type. Must be a callable non-primary agent name returned by app.agents()."),
       session_id: tool.schema.string().optional().describe("Existing Task session to continue"),
       command: tool.schema.string().optional().describe("The command that triggered this task"),
     },
     async execute(args: DelegateTaskArgs, toolContext) {
       const ctx = toolContext as ToolContextWithMetadata
 
+      let categoryOverrideNote: string | undefined
+      if (args.category && args.subagent_type) {
+        categoryOverrideNote = `[Note: You provided both category="${args.category}" and subagent_type="${args.subagent_type}". category takes precedence \u2014 subagent_type was ignored. Next time, provide ONLY category.]`
+      }
       if (args.category) {
-        if (args.subagent_type && args.subagent_type !== SISYPHUS_JUNIOR_AGENT) {
-          log("[task] category provided - overriding subagent_type to sisyphus-junior", {
-            category: args.category,
-            subagent_type: args.subagent_type,
-          })
-        }
         args.subagent_type = SISYPHUS_JUNIOR_AGENT
       }
       await ctx.metadata?.({
@@ -178,7 +176,7 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         : undefined
 
       let agentToUse: string
-      let categoryModel: { providerID: string; modelID: string; variant?: string } | undefined
+      let categoryModel: DelegatedModelConfig | undefined
       let categoryPromptAppend: string | undefined
       let modelInfo: import("../../features/task-toast-manager/types").ModelFallbackInfo | undefined
       let actualModel: string | undefined
@@ -223,7 +221,8 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
             availableCategories,
             availableSkills,
           })
-          return executeUnstableAgentTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, actualModel)
+          const result = await executeUnstableAgentTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, actualModel)
+          return categoryOverrideNote ? `${categoryOverrideNote}\n\n${result}` : result
         }
       } else {
         const resolution = await resolveSubagentExecution(args, options, parentContext.agent, categoryExamples)
@@ -246,11 +245,13 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         availableSkills,
       })
 
+      const prependNote = (result: string) => categoryOverrideNote ? `${categoryOverrideNote}\n\n${result}` : result
+
       if (runInBackground) {
-        return executeBackgroundTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, fallbackChain)
+        return prependNote(await executeBackgroundTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, fallbackChain))
       }
 
-      return executeSyncTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, modelInfo, fallbackChain)
+      return prependNote(await executeSyncTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, modelInfo, fallbackChain))
     },
   })
 }

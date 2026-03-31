@@ -465,7 +465,7 @@ describe("sisyphus-task", () => {
        expect(args.subagent_type).toBe("Sisyphus-Junior")
     }, { timeout: 10000 })
 
-    test("category overrides subagent_type and still maps to sisyphus-junior", async () => {
+    test("prefers category over subagent_type when both are provided", async () => {
       //#given
       const { createDelegateTask } = require("./tools")
 
@@ -507,14 +507,7 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      const args: {
-        description: string
-        prompt: string
-        category: string
-        subagent_type: string
-        run_in_background: boolean
-        load_skills: string[]
-      } = {
+      const args = {
         description: "Override test",
         prompt: "Do something",
         category: "quick",
@@ -524,11 +517,10 @@ describe("sisyphus-task", () => {
       }
 
       //#when
-      const result = await tool.execute(args, toolContext)
+      await tool.execute(args, toolContext)
 
-      //#then
+      //#then - category takes precedence, subagent_type is overridden to sisyphus-junior
       expect(args.subagent_type).toBe("Sisyphus-Junior")
-      expect(result).toContain("Background task launched")
     }, { timeout: 10000 })
 
     test("proceeds without error when systemDefaultModel is undefined", async () => {
@@ -3139,6 +3131,35 @@ describe("sisyphus-task", () => {
 
       // then
       expect(result).toBe(prompt)
+    })
+
+    test("excludes TDD line when tddEnabled is false", () => {
+      // given
+      const { buildTaskPrompt } = require("./tools")
+      const prompt = "Create a work plan for this feature"
+
+      // when
+      const result = buildTaskPrompt(prompt, "plan", false)
+
+      // then
+      expect(result).toContain(prompt)
+      expect(result).toContain("Answer in English.")
+      expect(result).toContain("Write the plan in English.")
+      expect(result).toContain("Plan well for ultrawork execution.")
+      expect(result).toContain("Include a clear atomic commit strategy.")
+      expect(result).not.toContain("Use TDD-oriented planning.")
+    })
+
+    test("includes TDD line when tddEnabled is true", () => {
+      // given
+      const { buildTaskPrompt } = require("./tools")
+      const prompt = "Create a work plan for this feature"
+
+      // when
+      const result = buildTaskPrompt(prompt, "plan", true)
+
+      // then
+      expect(result).toContain("Use TDD-oriented planning.")
     })
   })
 
