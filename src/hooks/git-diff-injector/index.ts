@@ -1,0 +1,1 @@
+export { createGitDiffInjectorHook } from "./hook";
