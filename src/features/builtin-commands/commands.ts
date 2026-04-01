@@ -7,6 +7,7 @@ import { REFACTOR_TEMPLATE } from "./templates/refactor"
 import { START_WORK_TEMPLATE } from "./templates/start-work"
 import { HANDOFF_TEMPLATE } from "./templates/handoff"
 import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review"
+import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops"
 
 const BUILTIN_COMMAND_DEFINITIONS: Record<BuiltinCommandName, Omit<CommandDefinition, "name">> = {
   "init-deep": {
@@ -58,7 +59,7 @@ ${REFACTOR_TEMPLATE}
   },
   "start-work": {
     description: "(builtin) Start Sisyphus work session from Prometheus plan",
-    agent: "atlas",
+    agent: "sisyphus",
     template: `<command-instruction>
 ${START_WORK_TEMPLATE}
 </command-instruction>
@@ -100,6 +101,16 @@ ${REVIEW_LOOP_TEMPLATE}
 $ARGUMENTS
 </user-request>`,
     argumentHint: "[scope description]",
+  },
+  "remove-ai-slops": {
+    description: "(builtin) Remove AI-generated code smells from branch changes and critically review the results",
+    template: `<command-instruction>
+${REMOVE_AI_SLOPS_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
   },
   handoff: {
     description: "(builtin) Create a detailed context summary for continuing work in a new session",

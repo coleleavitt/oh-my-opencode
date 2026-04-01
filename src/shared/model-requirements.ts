@@ -240,8 +240,8 @@ export const CATEGORY_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
   deep: {
     fallbackChain: [
       {
-        providers: ["openai", "opencode"],
-        model: "gpt-5.3-codex",
+        providers: ["openai", "github-copilot", "venice", "opencode"],
+        model: "gpt-5.4",
         variant: "medium",
       },
       {
@@ -255,7 +255,6 @@ export const CATEGORY_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
         variant: "high",
       },
     ],
-    requiresModel: "gpt-5.3-codex",
   },
   artistry: {
     fallbackChain: [
