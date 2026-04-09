@@ -5,6 +5,10 @@ import * as skillLoader from "../features/opencode-skill-loader";
 import type { OhMyOpenCodeConfig } from "../config";
 import type { PluginComponents } from "./plugin-components-loader";
 import { applyCommandConfig } from "./command-config-handler";
+import {
+  getAgentDisplayName,
+  getAgentDisplayName,
+} from "../shared/agent-display-names";
 
 function createPluginComponents(): PluginComponents {
   return {
@@ -94,5 +98,55 @@ describe("applyCommandConfig", () => {
     const commandConfig = config.command as Record<string, { description?: string }>;
     expect(commandConfig["agents-project-skill"]?.description).toContain("Agents project skill");
     expect(commandConfig["agents-global-skill"]?.description).toContain("Agents global skill");
+  });
+
+  test("normalizes Atlas command agents to the exported list key used by opencode command routing", async () => {
+    // given
+    loadBuiltinCommandsSpy.mockReturnValue({
+      "start-work": {
+        name: "start-work",
+        description: "(builtin) Start work",
+        template: "template",
+        agent: "atlas",
+      },
+    });
+    const config: Record<string, unknown> = { command: {} };
+
+    // when
+    await applyCommandConfig({
+      config,
+      pluginConfig: createPluginConfig(),
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    });
+
+    // then
+    const commandConfig = config.command as Record<string, { agent?: string }>;
+    expect(commandConfig["start-work"]?.agent).toBe(getAgentDisplayName("atlas"));
+  });
+
+  test("normalizes legacy display-name command agents to the exported list key", async () => {
+    // given
+    loadBuiltinCommandsSpy.mockReturnValue({
+      "start-work": {
+        name: "start-work",
+        description: "(builtin) Start work",
+        template: "template",
+        agent: getAgentDisplayName("atlas"),
+      },
+    });
+    const config: Record<string, unknown> = { command: {} };
+
+    // when
+    await applyCommandConfig({
+      config,
+      pluginConfig: createPluginConfig(),
+      ctx: { directory: "/tmp" },
+      pluginComponents: createPluginComponents(),
+    });
+
+    // then
+    const commandConfig = config.command as Record<string, { agent?: string }>;
+    expect(commandConfig["start-work"]?.agent).toBe(getAgentDisplayName("atlas"));
   });
 });

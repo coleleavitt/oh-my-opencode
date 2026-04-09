@@ -36,7 +36,9 @@
           "agent-browser",
           "dev-browser",
           "frontend-ui-ux",
-          "git-master"
+          "git-master",
+          "review-work",
+          "ai-slop-remover"
         ]
       }
     },
@@ -63,6 +65,12 @@
       }
     },
     "disabled_tools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mcp_env_allowlist": {
       "type": "array",
       "items": {
         "type": "string"
@@ -5996,7 +6004,7 @@
           "minimum": 20
         },
         "isolation": {
-          "default": "session",
+          "default": "inline",
           "type": "string",
           "enum": [
             "inline",

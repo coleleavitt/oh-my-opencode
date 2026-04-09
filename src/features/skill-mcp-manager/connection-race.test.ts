@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, afterAll } from "bun:test"
 import type { ClaudeCodeMcpServer } from "../claude-code-mcp-loader/types"
 import type { SkillMcpClientInfo, SkillMcpManagerState } from "./types"
 
@@ -47,6 +47,8 @@ mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
   StdioClientTransport: MockStdioClientTransport,
 }))
 
+afterAll(() => { mock.restore() })
+
 const { disconnectAll, disconnectSession } = await import("./cleanup")
 const { getOrCreateClient } = await import("./connection")
 
@@ -93,6 +95,7 @@ function createClientInfo(sessionID: string): SkillMcpClientInfo {
     serverName: "race-server",
     skillName: "race-skill",
     sessionID,
+    scope: "builtin",
   }
 }
 

@@ -4,7 +4,7 @@ import { describe, test, expect, spyOn, beforeEach, afterEach } from "bun:test"
 import { resolveCategoryConfig, createConfigHandler } from "./config-handler"
 import type { CategoryConfig } from "../config/schema"
 import type { OhMyOpenCodeConfig } from "../config"
-import { getAgentDisplayName, getAgentListDisplayName } from "../shared/agent-display-names"
+import { getAgentDisplayName, getAgentDisplayName } from "../shared/agent-display-names"
 
 import * as agents from "../agents"
 import * as sisyphusJunior from "../agents/sisyphus-junior"
@@ -19,6 +19,20 @@ import * as shared from "../shared"
 import * as configDir from "../shared/opencode-config-dir"
 import * as permissionCompat from "../shared/permission-compat"
 import * as modelResolver from "../shared/model-resolver"
+import * as agentPriorityOrder from "./agent-priority-order"
+
+function createPluginConfig(overrides: Partial<OhMyOpenCodeConfig> = {}): OhMyOpenCodeConfig {
+  return {
+    git_master: {
+      commit_footer: true,
+      include_co_authored_by: true,
+      git_env_prefix: "GIT_MASTER=1",
+    },
+    ...overrides,
+  }
+}
+
+let setAdditionalAllowedMcpEnvVarsSpy: ReturnType<typeof spyOn> | undefined
 
 beforeEach(() => {
   spyOn(agents, "createBuiltinAgents" as any).mockResolvedValue({
@@ -46,6 +60,7 @@ beforeEach(() => {
   spyOn(agentLoader, "loadProjectAgents" as any).mockReturnValue({})
 
   spyOn(mcpLoader, "loadMcpConfigs" as any).mockResolvedValue({ servers: {} })
+  setAdditionalAllowedMcpEnvVarsSpy = spyOn(mcpLoader, "setAdditionalAllowedMcpEnvVars").mockImplementation(() => {})
 
   spyOn(pluginLoader, "loadAllPluginComponents" as any).mockResolvedValue({
     commands: {},
@@ -92,6 +107,7 @@ afterEach(() => {
   ;(agentLoader.loadUserAgents as any)?.mockRestore?.()
   ;(agentLoader.loadProjectAgents as any)?.mockRestore?.()
   ;(mcpLoader.loadMcpConfigs as any)?.mockRestore?.()
+  setAdditionalAllowedMcpEnvVarsSpy?.mockRestore()
   ;(pluginLoader.loadAllPluginComponents as any)?.mockRestore?.()
   ;(mcpModule.createBuiltinMcps as any)?.mockRestore?.()
   ;(shared.log as any)?.mockRestore?.()
@@ -100,12 +116,13 @@ afterEach(() => {
   ;(configDir.getOpenCodeConfigPaths as any)?.mockRestore?.()
   ;(permissionCompat.migrateAgentConfig as any)?.mockRestore?.()
   ;(modelResolver.resolveModelWithFallback as any)?.mockRestore?.()
+  ;(agentPriorityOrder.reorderAgentsByPriority as any)?.mockRestore?.()
 })
 
 describe("Sisyphus-Junior model inheritance", () => {
   test("does not inherit UI-selected model as system default", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "opencode/kimi-k2.5-free",
       agent: {},
@@ -131,13 +148,13 @@ describe("Sisyphus-Junior model inheritance", () => {
 
   test("uses explicitly configured sisyphus-junior model", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       agents: {
         "sisyphus-junior": {
           model: "openai/gpt-5.3-codex",
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "opencode/kimi-k2.5-free",
       agent: {},
@@ -162,11 +179,42 @@ describe("Sisyphus-Junior model inheritance", () => {
   })
 })
 
+describe("MCP env allowlist initialization", () => {
+  test("sets the configured MCP env allowlist before plugin loading", async () => {
+    // given
+    const pluginConfig = createPluginConfig({
+      mcp_env_allowlist: ["CUSTOM_API_KEY", "CUSTOM_AUTH_TOKEN"],
+    })
+    const config: Record<string, unknown> = {
+      model: "anthropic/claude-opus-4-6",
+      agent: {},
+    }
+    const handler = createConfigHandler({
+      ctx: { directory: "/tmp" },
+      pluginConfig,
+      modelCacheState: {
+        anthropicContext1MEnabled: false,
+        modelContextLimitsCache: new Map(),
+      },
+    })
+
+    // when
+    await handler(config)
+
+    // then
+    expect(mcpLoader.setAdditionalAllowedMcpEnvVars).toHaveBeenCalledWith([
+      "CUSTOM_API_KEY",
+      "CUSTOM_AUTH_TOKEN",
+    ])
+  })
+})
+
 describe("Plan agent demote behavior", () => {
   test("orders core agents as sisyphus -> hephaestus -> prometheus -> atlas", async () => {
     // #given
     const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
       mockResolvedValue: (value: Record<string, unknown>) => void
+      mock: { calls: unknown[][] }
     }
     createBuiltinAgentsMock.mockResolvedValue({
       sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
@@ -174,11 +222,11 @@ describe("Plan agent demote behavior", () => {
       oracle: { name: "oracle", prompt: "test", mode: "subagent" },
       atlas: { name: "atlas", prompt: "test", mode: "primary" },
     })
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -198,23 +246,69 @@ describe("Plan agent demote behavior", () => {
     // #then
     const keys = Object.keys(config.agent as Record<string, unknown>)
     const coreAgents = [
-      getAgentListDisplayName("sisyphus"),
-      getAgentListDisplayName("hephaestus"),
-      getAgentListDisplayName("prometheus"),
-      getAgentListDisplayName("atlas"),
+      getAgentDisplayName("sisyphus"),
+      getAgentDisplayName("hephaestus"),
+      getAgentDisplayName("prometheus"),
+      getAgentDisplayName("atlas"),
     ]
     const ordered = keys.filter((key) => coreAgents.includes(key))
     expect(ordered).toEqual(coreAgents)
   })
 
+  test("assembles core agents first before priority reorder runs", async () => {
+    // #given
+    const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
+      mockResolvedValue: (value: Record<string, unknown>) => void
+      mock: { calls: unknown[][] }
+    }
+    createBuiltinAgentsMock.mockResolvedValue({
+      sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
+      hephaestus: { name: "hephaestus", prompt: "test", mode: "primary" },
+      oracle: { name: "oracle", prompt: "test", mode: "subagent" },
+      atlas: { name: "atlas", prompt: "test", mode: "primary" },
+    })
+    const reorderSpy = spyOn(agentPriorityOrder, "reorderAgentsByPriority") as any
+    const pluginConfig = createPluginConfig({
+      sisyphus_agent: {
+        planner_enabled: true,
+      },
+    })
+    const config: Record<string, unknown> = {
+      model: "anthropic/claude-opus-4-6",
+      agent: {},
+    }
+    const handler = createConfigHandler({
+      ctx: { directory: "/tmp" },
+      pluginConfig,
+      modelCacheState: {
+        anthropicContext1MEnabled: false,
+        modelContextLimitsCache: new Map(),
+      },
+    })
+
+    // #when
+    await handler(config)
+
+    // #then
+    const assembledAgentKeys = Object.keys(
+      reorderSpy.mock.calls.at(0)?.[0] as Record<string, unknown>
+    )
+    expect(assembledAgentKeys.slice(0, 4)).toEqual([
+      getAgentDisplayName("sisyphus"),
+      getAgentDisplayName("hephaestus"),
+      getAgentDisplayName("prometheus"),
+      getAgentDisplayName("atlas"),
+    ])
+  })
+
   test("plan agent should be demoted to subagent without inheriting prometheus prompt", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
         replace_plan: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {
@@ -247,11 +341,11 @@ describe("Plan agent demote behavior", () => {
 
   test("plan agent remains unchanged when planner is disabled", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: false,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {
@@ -284,11 +378,11 @@ describe("Plan agent demote behavior", () => {
 
   test("prometheus should have mode 'all' to be callable via task", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -324,7 +418,7 @@ describe("Agent permission defaults", () => {
       hephaestus: { name: "hephaestus", prompt: "test", mode: "primary" },
       oracle: { name: "oracle", prompt: "test", mode: "subagent" },
     })
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -352,7 +446,7 @@ describe("Agent permission defaults", () => {
 describe("default_agent behavior with Sisyphus orchestration", () => {
   test("canonicalizes configured default_agent with surrounding whitespace", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "  hephaestus  ",
@@ -376,7 +470,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("canonicalizes configured default_agent when key uses mixed case", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "HePhAeStUs",
@@ -400,7 +494,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("canonicalizes configured default_agent key to display name", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "hephaestus",
@@ -424,7 +518,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("preserves existing display-name default_agent", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const displayName = getAgentDisplayName("hephaestus")
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
@@ -449,7 +543,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("sets default_agent to sisyphus when missing", async () => {
     // #given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -472,7 +566,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("sets default_agent to sisyphus when configured default_agent is empty after trim", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "    ",
@@ -496,7 +590,7 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("preserves custom default_agent names while trimming whitespace", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "  Custom Agent  ",
@@ -520,11 +614,11 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 
   test("does not normalize configured default_agent when Sisyphus is disabled", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         disabled: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       default_agent: "  HePhAeStUs  ",
@@ -650,7 +744,7 @@ describe("Prometheus category config resolution", () => {
 describe("Prometheus direct override priority over category", () => {
   test("direct reasoningEffort takes priority over category reasoningEffort", async () => {
     // given - category has reasoningEffort=xhigh, direct override says "low"
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
@@ -666,7 +760,7 @@ describe("Prometheus direct override priority over category", () => {
           reasoningEffort: "low",
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -692,7 +786,7 @@ describe("Prometheus direct override priority over category", () => {
 
   test("category reasoningEffort applied when no direct override", async () => {
     // given - category has reasoningEffort but no direct override
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
@@ -707,7 +801,7 @@ describe("Prometheus direct override priority over category", () => {
           category: "reasoning-cat",
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -733,7 +827,7 @@ describe("Prometheus direct override priority over category", () => {
 
   test("direct temperature takes priority over category temperature", async () => {
     // given
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
@@ -749,7 +843,7 @@ describe("Prometheus direct override priority over category", () => {
           temperature: 0.1,
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -776,7 +870,7 @@ describe("Prometheus direct override priority over category", () => {
   test("prometheus prompt_append is appended to base prompt", async () => {
     // #given - prometheus override with prompt_append
     const customInstructions = "## Custom Project Rules\nUse max 2 commits."
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
@@ -785,7 +879,7 @@ describe("Prometheus direct override priority over category", () => {
           prompt_append: customInstructions,
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -820,12 +914,12 @@ describe("Plan agent model inheritance from prometheus", () => {
       provenance: "provider-fallback",
       variant: "max",
     })
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
         replace_plan: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {
@@ -864,7 +958,7 @@ describe("Plan agent model inheritance from prometheus", () => {
       provenance: "override",
       variant: "high",
     })
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
         replace_plan: true,
@@ -881,7 +975,7 @@ describe("Plan agent model inheritance from prometheus", () => {
           thinking: { type: "enabled", budgetTokens: 8000 },
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -919,7 +1013,7 @@ describe("Plan agent model inheritance from prometheus", () => {
       provenance: "provider-fallback",
       variant: "max",
     })
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
         replace_plan: true,
@@ -931,7 +1025,7 @@ describe("Plan agent model inheritance from prometheus", () => {
           temperature: 0.5,
         },
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -962,12 +1056,12 @@ describe("Plan agent model inheritance from prometheus", () => {
       provenance: "provider-fallback",
       variant: "max",
     })
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
         replace_plan: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1001,11 +1095,11 @@ describe("Deadlock prevention - fetchAvailableModels must not receive client", (
     // - Server waits for plugin init to complete before handling requests
     const fetchSpy = spyOn(shared, "fetchAvailableModels" as any).mockResolvedValue(new Set<string>())
 
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       sisyphus_agent: {
         planner_enabled: true,
       },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1041,7 +1135,7 @@ describe("config-handler plugin loading error boundary (#1559)", () => {
     //#given
     ;(pluginLoader.loadAllPluginComponents as any).mockRestore?.()
     spyOn(pluginLoader, "loadAllPluginComponents" as any).mockRejectedValue(new Error("crash"))
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1068,9 +1162,9 @@ describe("config-handler plugin loading error boundary (#1559)", () => {
     spyOn(pluginLoader, "loadAllPluginComponents" as any).mockImplementation(
       () => new Promise(() => {})
     )
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       experimental: { plugin_load_timeout_ms: 100 },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1096,7 +1190,7 @@ describe("config-handler plugin loading error boundary (#1559)", () => {
     ;(pluginLoader.loadAllPluginComponents as any).mockRestore?.()
     spyOn(pluginLoader, "loadAllPluginComponents" as any).mockRejectedValue(new Error("crash"))
     const logSpy = shared.log as ReturnType<typeof spyOn>
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1133,7 +1227,7 @@ describe("config-handler plugin loading error boundary (#1559)", () => {
       plugins: [{ name: "test-plugin", version: "1.0.0" }],
       errors: [],
     })
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1156,13 +1250,58 @@ describe("config-handler plugin loading error boundary (#1559)", () => {
   })
 })
 
+describe("command agent routing coherence", () => {
+  test("keeps start-work aligned with the exported Atlas list key opencode matches exactly", async () => {
+    //#given
+    const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
+      mockResolvedValue: (value: Record<string, unknown>) => void
+    }
+    createBuiltinAgentsMock.mockResolvedValue({
+      sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
+      atlas: { name: "atlas", prompt: "test", mode: "primary" },
+    })
+    ;(builtinCommands.loadBuiltinCommands as unknown as {
+      mockReturnValue: (value: Record<string, unknown>) => void
+    }).mockReturnValue({
+      "start-work": {
+        name: "start-work",
+        description: "(builtin) Start work",
+        template: "template",
+        agent: "atlas",
+      },
+    })
+    const pluginConfig = createPluginConfig({})
+    const config: Record<string, unknown> = {
+      model: "anthropic/claude-opus-4-6",
+      agent: {},
+    }
+    const handler = createConfigHandler({
+      ctx: { directory: "/tmp" },
+      pluginConfig,
+      modelCacheState: {
+        anthropicContext1MEnabled: false,
+        modelContextLimitsCache: new Map(),
+      },
+    })
+
+    //#when
+    await handler(config)
+
+    //#then
+    const agentConfig = config.agent as Record<string, unknown>
+    const commandConfig = config.command as Record<string, { agent?: string }>
+    expect(Object.keys(agentConfig)).toContain(getAgentDisplayName("atlas"))
+    expect(commandConfig["start-work"]?.agent).toBe(getAgentDisplayName("atlas"))
+  })
+})
+
 describe("per-agent todowrite/todoread deny when task_system enabled", () => {
   const AGENTS_WITH_TODO_DENY = new Set([
-    getAgentListDisplayName("sisyphus"),
-    getAgentListDisplayName("hephaestus"),
-    getAgentListDisplayName("atlas"),
-    getAgentListDisplayName("prometheus"),
-    getAgentListDisplayName("sisyphus-junior"),
+    getAgentDisplayName("sisyphus"),
+    getAgentDisplayName("hephaestus"),
+    getAgentDisplayName("prometheus"),
+    getAgentDisplayName("atlas"),
+    getAgentDisplayName("sisyphus-junior"),
   ])
 
   test("denies todowrite and todoread for primary agents when task_system is enabled", async () => {
@@ -1173,15 +1312,15 @@ describe("per-agent todowrite/todoread deny when task_system enabled", () => {
     createBuiltinAgentsMock.mockResolvedValue({
       sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
       hephaestus: { name: "hephaestus", prompt: "test", mode: "primary" },
-      atlas: { name: "atlas", prompt: "test", mode: "primary" },
       prometheus: { name: "prometheus", prompt: "test", mode: "primary" },
+      atlas: { name: "atlas", prompt: "test", mode: "primary" },
       "sisyphus-junior": { name: "sisyphus-junior", prompt: "test", mode: "subagent" },
       oracle: { name: "oracle", prompt: "test", mode: "subagent" },
     })
 
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       experimental: { task_system: true },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1210,15 +1349,16 @@ describe("per-agent todowrite/todoread deny when task_system enabled", () => {
     //#given
     const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
       mockResolvedValue: (value: Record<string, unknown>) => void
+      mock: { calls: unknown[][] }
     }
     createBuiltinAgentsMock.mockResolvedValue({
       sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
       hephaestus: { name: "hephaestus", prompt: "test", mode: "primary" },
     })
 
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       experimental: { task_system: false },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1236,6 +1376,10 @@ describe("per-agent todowrite/todoread deny when task_system enabled", () => {
     await handler(config)
 
     //#then
+    const lastCall =
+      createBuiltinAgentsMock.mock.calls[createBuiltinAgentsMock.mock.calls.length - 1]
+    expect(lastCall?.[11]).toBe(false)
+
     const agentResult = config.agent as Record<string, { permission?: Record<string, unknown> }>
     expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todowrite).toBeUndefined()
     expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todoread).toBeUndefined()
@@ -1243,16 +1387,17 @@ describe("per-agent todowrite/todoread deny when task_system enabled", () => {
     expect(agentResult[getAgentDisplayName("hephaestus")]?.permission?.todoread).toBeUndefined()
   })
 
-  test("denies todowrite/todoread when task_system is undefined", async () => {
+  test("does not deny todowrite/todoread when task_system is undefined", async () => {
     //#given
     const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
       mockResolvedValue: (value: Record<string, unknown>) => void
+      mock: { calls: unknown[][] }
     }
     createBuiltinAgentsMock.mockResolvedValue({
       sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
     })
 
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1270,9 +1415,13 @@ describe("per-agent todowrite/todoread deny when task_system enabled", () => {
     await handler(config)
 
     //#then
+    const lastCall =
+      createBuiltinAgentsMock.mock.calls[createBuiltinAgentsMock.mock.calls.length - 1]
+    expect(lastCall?.[11]).toBe(false)
+
     const agentResult = config.agent as Record<string, { permission?: Record<string, unknown> }>
-    expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todowrite).toBe("deny")
-    expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todoread).toBe("deny")
+    expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todowrite).toBeUndefined()
+    expect(agentResult[getAgentDisplayName("sisyphus")]?.permission?.todoread).toBeUndefined()
   })
 })
 
@@ -1287,9 +1436,9 @@ describe("disable_omo_env pass-through", () => {
       sisyphus: { name: "sisyphus", prompt: "without-env", mode: "primary" },
     })
 
-    const pluginConfig: OhMyOpenCodeConfig = {
+    const pluginConfig = createPluginConfig({
       experimental: { disable_omo_env: true },
-    }
+    })
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},
@@ -1323,7 +1472,7 @@ describe("disable_omo_env pass-through", () => {
       sisyphus: { name: "sisyphus", prompt: "with-env", mode: "primary" },
     })
 
-    const pluginConfig: OhMyOpenCodeConfig = {}
+    const pluginConfig = createPluginConfig({})
     const config: Record<string, unknown> = {
       model: "anthropic/claude-opus-4-6",
       agent: {},

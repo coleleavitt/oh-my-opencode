@@ -4,16 +4,17 @@ import {
   getPlanProgress,
   getTaskSessionState,
   readBoulderState,
-  readCurrentTopLevelTask,
   upsertTaskSessionState,
 } from "../../features/boulder-state"
 import { log } from "../../shared/logger"
 import { isCallerOrchestrator } from "../../shared/session-utils"
+import { syncBackgroundLaunchSessionTracking } from "./background-launch-session-tracking"
 import { collectGitDiffStats, formatFileChanges } from "../../shared/git-worktree"
 import { shouldPauseForFinalWaveApproval } from "./final-wave-approval-gate"
 import { HOOK_NAME } from "./hook-name"
 import { DIRECT_WORK_REMINDER } from "./system-reminder-templates"
 import { isSisyphusPath } from "./sisyphus-path"
+import { resolvePreferredSessionId, resolveTaskContext } from "./task-context"
 import { extractSessionIdFromMetadata, extractSessionIdFromOutput, validateSubagentSessionId } from "./subagent-session-id"
 import {
   buildCompletionGate,
@@ -27,50 +28,7 @@ import { parseReviewResponse, formatReviewSummary } from "../../shared/review-pa
 const AUTO_REVIEW_WRITE_THRESHOLD = 5
 const MAX_REVIEW_CYCLES = 5
 import type { PendingTaskRef, SessionState } from "./types"
-import type { ToolExecuteAfterInput, ToolExecuteAfterOutput, TrackedTopLevelTaskRef } from "./types"
-
-function resolvePreferredSessionId(currentSessionId?: string, trackedSessionId?: string): string {
-  return currentSessionId ?? trackedSessionId ?? "<session_id>"
-}
-
-function resolveTaskContext(
-  pendingTaskRef: PendingTaskRef | undefined,
-  planPath: string,
-): {
-  currentTask: TrackedTopLevelTaskRef | null
-  shouldSkipTaskSessionUpdate: boolean
-  shouldIgnoreCurrentSessionId: boolean
-} {
-  if (!pendingTaskRef) {
-    return {
-      currentTask: readCurrentTopLevelTask(planPath),
-      shouldSkipTaskSessionUpdate: false,
-      shouldIgnoreCurrentSessionId: false,
-    }
-  }
-
-  if (pendingTaskRef.kind === "track") {
-    return {
-      currentTask: pendingTaskRef.task,
-      shouldSkipTaskSessionUpdate: false,
-      shouldIgnoreCurrentSessionId: false,
-    }
-  }
-
-  if (pendingTaskRef.reason === "explicit_resume") {
-    return {
-      currentTask: readCurrentTopLevelTask(planPath),
-      shouldSkipTaskSessionUpdate: true,
-      shouldIgnoreCurrentSessionId: true,
-    }
-  }
-
-  return {
-    currentTask: pendingTaskRef.task,
-    shouldSkipTaskSessionUpdate: true,
-    shouldIgnoreCurrentSessionId: true,
-  }
-}
+import type { ToolExecuteAfterInput, ToolExecuteAfterOutput } from "./types"
 
 const sessionWriteCounts = new Map<string, number>()
 const sessionReviewCycle = new Map<string, number>()
@@ -161,10 +119,19 @@ export function createToolExecuteAfterHandler(input: {
     if (toolInput.callID) {
       pendingTaskRefs.delete(toolInput.callID)
     }
+    const boulderState = readBoulderState(ctx.directory)
     const isBackgroundLaunch = outputStr.includes("Background task launched") || outputStr.includes("Background task continued")
       || outputStr.includes("Background delegate launched")
       || outputStr.includes("Background agent task launched")
     if (isBackgroundLaunch) {
+      await syncBackgroundLaunchSessionTracking({
+        ctx,
+        boulderState,
+        toolInput,
+        toolOutput,
+        pendingTaskRef,
+        metadataSessionId,
+      })
       return
     }
 
@@ -258,7 +225,6 @@ Report the remaining findings to the user and ask how to proceed.
     }
 
     if (toolOutput.output && typeof toolOutput.output === "string") {
-      const boulderState = readBoulderState(ctx.directory)
       const worktreePath = boulderState?.worktree_path?.trim()
       const verificationDirectory = worktreePath ? worktreePath : ctx.directory
       const gitStats = collectGitDiffStats(verificationDirectory)
@@ -277,17 +243,7 @@ Report the remaining findings to the user and ask how to proceed.
           : null
         const sessionState = toolInput.sessionID ? getState(toolInput.sessionID) : undefined
 
-        if (toolInput.sessionID && !boulderState.session_ids?.includes(toolInput.sessionID)) {
-          appendSessionId(ctx.directory, toolInput.sessionID)
-          log(`[${HOOK_NAME}] Appended session to boulder`, {
-            sessionID: toolInput.sessionID,
-            plan: boulderState.plan_name,
-          })
-        }
-
-        const lineageSessionIDs = toolInput.sessionID && !boulderState.session_ids.includes(toolInput.sessionID)
-          ? [...boulderState.session_ids, toolInput.sessionID]
-          : boulderState.session_ids
+        const lineageSessionIDs = boulderState.session_ids
         const subagentSessionId = await validateSubagentSessionId({
           client: ctx.client,
           sessionID: extractedSessionId,

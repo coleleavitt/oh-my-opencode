@@ -131,7 +131,7 @@ Available categories: ${allCategoryNames}`,
       const parsedModel = parseModelString(actualModel)
       const variantToUse = userCategories?.[args.category!]?.variant ?? resolved.config.variant
       categoryModel = parsedModel
-        ? applyCategoryParams({ ...parsedModel, variant: variantToUse }, resolved.config)
+        ? applyCategoryParams({ ...parsedModel, variant: variantToUse ?? parsedModel.variant }, resolved.config)
         : undefined
     }
   } else {
@@ -150,12 +150,12 @@ Available categories: ${allCategoryNames}`,
       const userModelOverride = explicitCategoryModel ?? overrideModel
       if (userModelOverride) {
         actualModel = userModelOverride
-        const parsedModel = parseModelString(actualModel)
+        const parsedModel = parseModelString(userModelOverride)
         const variantToUse = userCategories?.[args.category!]?.variant ?? resolved.config.variant
         categoryModel = parsedModel
-          ? applyCategoryParams({ ...parsedModel, variant: variantToUse }, resolved.config)
+          ? applyCategoryParams({ ...parsedModel, variant: variantToUse ?? parsedModel.variant }, resolved.config)
           : undefined
-        modelInfo = { model: actualModel, type: "user-defined", source: "override" }
+        modelInfo = { model: userModelOverride, type: "user-defined", source: "override" }
       }
     } else if (resolution) {
       const {
@@ -200,7 +200,7 @@ Available categories: ${allCategoryNames}`,
       const parsedModel = parseModelString(actualModel)
       const variantToUse = userCategories?.[args.category!]?.variant ?? resolvedVariant ?? resolved.config.variant
       categoryModel = parsedModel
-        ? applyCategoryParams({ ...parsedModel, variant: variantToUse }, resolved.config)
+        ? applyCategoryParams({ ...parsedModel, variant: variantToUse ?? parsedModel.variant }, resolved.config)
         : undefined
     }
   }
@@ -234,7 +234,7 @@ Available categories: ${categoryNames.join(", ")}`,
   }
 
   const resolvedModel = actualModel?.toLowerCase()
-  const isUnstableAgent = resolved.config.is_unstable_agent ?? (resolvedModel ? resolvedModel.includes("gemini") || resolvedModel.includes("minimax") || resolvedModel.includes("kimi") : false)
+  const isUnstableAgent = resolved.config.is_unstable_agent ?? (resolvedModel ? resolvedModel.includes("gemini") || resolvedModel.includes("minimax") : false)
 
   const defaultProviderID = categoryModel?.providerID
     ?? parseModelString(actualModel ?? "")?.providerID
@@ -275,6 +275,6 @@ Available categories: ${categoryNames.join(", ")}`,
     actualModel,
     isUnstableAgent,
     // Don't use hardcoded fallback chain when resolution was skipped (cold cache)
-    fallbackChain: configuredFallbackChain ?? (isModelResolutionSkipped ? undefined : requirement?.fallbackChain),
+    fallbackChain: configuredFallbackChain ?? ((isModelResolutionSkipped || explicitCategoryModel || overrideModel) ? undefined : requirement?.fallbackChain),
   }
 }

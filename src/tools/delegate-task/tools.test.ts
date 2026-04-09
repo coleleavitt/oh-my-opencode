@@ -180,8 +180,8 @@ describe("sisyphus-task", () => {
       //#given / #when
       const result = isPlanAgent("planner")
 
-      //#then - "planner" contains "plan" so it matches via includes
-      expect(result).toBe(true)
+      //#then - "planner" is NOT an exact match for "plan" (T37 exact match fix)
+      expect(result).toBe(false)
     })
 
     test("returns true for case-insensitive match 'PLAN'", () => {
@@ -1366,6 +1366,134 @@ describe("sisyphus-task", () => {
       )).rejects.toThrow("Invalid arguments: 'run_in_background' parameter is REQUIRED")
     })
 
+    test("#given category without description #when executing #then auto-generates description from prompt", async () => {
+      // given
+      const { createDelegateTask } = require("./tools")
+      let capturedTitle: string | undefined
+      const mockManager = { launch: async () => ({}) }
+      const mockClient = {
+        app: { agents: async () => ({ data: [] }) },
+        config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
+        session: {
+          create: async () => ({ data: { id: "test-session" } }),
+          prompt: async () => ({ data: {} }),
+          promptAsync: async () => ({ data: {} }),
+          messages: async () => ({ data: [] }),
+        },
+      }
+      const tool = createDelegateTask({ manager: mockManager, client: mockClient })
+
+      // when
+      try {
+        await tool.execute(
+          {
+            prompt: "Fix the broken unit tests in parser module",
+            category: "quick",
+            run_in_background: false,
+            load_skills: [],
+          },
+          {
+            sessionID: "parent-session",
+            messageID: "parent-message",
+            agent: "sisyphus",
+            abort: new AbortController().signal,
+            metadata: async (meta: { title?: string }) => { capturedTitle = meta.title },
+          }
+        )
+      } catch {
+        // execution may fail due to incomplete mocks — we only care about the title
+      }
+
+      // then — description auto-generated from first 4 words of prompt
+      expect(capturedTitle).toBe("Fix the broken unit")
+    })
+
+    test("#given empty description #when executing #then auto-generates description from prompt", async () => {
+      // given
+      const { createDelegateTask } = require("./tools")
+      let capturedTitle: string | undefined
+      const mockManager = { launch: async () => ({}) }
+      const mockClient = {
+        app: { agents: async () => ({ data: [] }) },
+        config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
+        session: {
+          create: async () => ({ data: { id: "test-session" } }),
+          prompt: async () => ({ data: {} }),
+          promptAsync: async () => ({ data: {} }),
+          messages: async () => ({ data: [] }),
+        },
+      }
+      const tool = createDelegateTask({ manager: mockManager, client: mockClient })
+
+      // when
+      try {
+        await tool.execute(
+          {
+            description: "   ",
+            prompt: "Refactor authentication module completely",
+            category: "quick",
+            run_in_background: false,
+            load_skills: [],
+          },
+          {
+            sessionID: "parent-session",
+            messageID: "parent-message",
+            agent: "sisyphus",
+            abort: new AbortController().signal,
+            metadata: async (meta: { title?: string }) => { capturedTitle = meta.title },
+          }
+        )
+      } catch {
+        // execution may fail due to incomplete mocks
+      }
+
+      // then
+      expect(capturedTitle).toBe("Refactor authentication module completely")
+    })
+
+    test("#given explicit description #when executing #then preserves provided description", async () => {
+      // given
+      const { createDelegateTask } = require("./tools")
+      let capturedTitle: string | undefined
+      const mockManager = { launch: async () => ({}) }
+      const mockClient = {
+        app: { agents: async () => ({ data: [] }) },
+        config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
+        session: {
+          create: async () => ({ data: { id: "test-session" } }),
+          prompt: async () => ({ data: {} }),
+          promptAsync: async () => ({ data: {} }),
+          messages: async () => ({ data: [] }),
+        },
+      }
+      const tool = createDelegateTask({ manager: mockManager, client: mockClient })
+
+      // when
+      try {
+        await tool.execute(
+          {
+            description: "My custom task name",
+            prompt: "Do something else entirely",
+            category: "quick",
+            run_in_background: false,
+            load_skills: [],
+          },
+          {
+            sessionID: "parent-session",
+            messageID: "parent-message",
+            agent: "sisyphus",
+            abort: new AbortController().signal,
+            metadata: async (meta: { title?: string }) => { capturedTitle = meta.title },
+          }
+        )
+      } catch {
+        // execution may fail due to incomplete mocks
+      }
+
+      // then — explicit description preserved
+      expect(capturedTitle).toBe("My custom task name")
+    })
+
     test("#given explicit run_in_background=false #when executing #then sync execution succeeds", async () => {
       // given
       const { createDelegateTask } = require("./tools")
@@ -2368,60 +2496,68 @@ describe("sisyphus-task", () => {
       expect(result).toContain("Artistry result here")
     }, { timeout: 20000 })
 
-    test("writing category (kimi) with run_in_background=false should force background but wait for result", async () => {
-      // given - writing uses kimi-for-coding/k2p5
+    test("writing category (kimi) with run_in_background=false should run sync when kimi provider is available", async () => {
+      // given - writing uses kimi model which is no longer considered unstable
+      // Override provider cache to include kimi-for-coding provider
+      providerModelsSpy.mockReturnValue({
+        models: {
+          anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"],
+          google: ["gemini-3.1-pro", "gemini-3-flash"],
+          openai: ["gpt-5.4", "gpt-5.3-codex"],
+          "kimi-for-coding": ["k2p5"],
+        },
+        connected: ["anthropic", "google", "openai", "kimi-for-coding"],
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })
+      cacheSpy.mockReturnValue(["anthropic", "google", "openai", "kimi-for-coding"])
+
       const { createDelegateTask } = require("./tools")
       let launchCalled = false
-      
-      const launchedTask = {
-        id: "task-writing",
-        sessionID: "ses_writing_gemini",
-        description: "Writing gemini task",
-        agent: "sisyphus-junior",
-        status: "running",
-      }
+      let promptCalled = false
+
       const mockManager = {
         launch: async () => {
           launchCalled = true
-          return launchedTask
+          return { id: "should-not-be-called", sessionID: "x", description: "x", agent: "x", status: "running" }
         },
-        getTask: () => launchedTask,
       }
-      
+
+       const promptMock = async () => {
+         promptCalled = true
+         return { data: {} }
+       }
+
        const mockClient = {
          app: { agents: async () => ({ data: [] }) },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
-         model: { list: async () => [{ provider: "google", id: "gemini-3-flash" }] },
          session: {
            get: async () => ({ data: { directory: "/project" } }),
-           create: async () => ({ data: { id: "ses_writing_gemini" } }),
-           prompt: async () => ({ data: {} }),
-           promptAsync: async () => ({ data: {} }),
+           create: async () => ({ data: { id: "ses_writing_kimi" } }),
+           prompt: promptMock,
+           promptAsync: promptMock,
            messages: async () => ({
-             data: [
-               { info: { role: "assistant", time: { created: Date.now() } }, parts: [{ type: "text", text: "Writing result here" }] }
-             ]
+             data: [{ info: { role: "assistant" }, parts: [{ type: "text", text: "Writing result here" }] }]
            }),
-           status: async () => ({ data: { "ses_writing_gemini": { type: "idle" } } }),
+           status: async () => ({ data: { "ses_writing_kimi": { type: "idle" } } }),
          },
        }
-       
+
        const tool = createDelegateTask({
          manager: mockManager,
          client: mockClient,
        })
-      
+
       const toolContext = {
         sessionID: "parent-session",
         messageID: "parent-message",
         agent: "sisyphus",
         abort: new AbortController().signal,
       }
-      
-      // when - writing category (gemini-3-flash)
+
+      // when - writing category (kimi) with run_in_background=false
       const result = await tool.execute(
         {
-          description: "Test writing forced background",
+          description: "Test writing sync",
           prompt: "Write something",
           category: "writing",
           run_in_background: false,
@@ -2429,11 +2565,11 @@ describe("sisyphus-task", () => {
         },
         toolContext
       )
-      
-      // then - should launch as background BUT wait for and return actual result
-      expect(launchCalled).toBe(true)
-      expect(result).toContain("SUPERVISED TASK COMPLETED")
-      expect(result).toContain("Writing result here")
+
+      // then - should run sync, NOT forced to background (kimi is not unstable)
+      expect(launchCalled).toBe(false)
+      expect(promptCalled).toBe(true)
+      expect(result).not.toContain("SUPERVISED TASK COMPLETED")
     }, { timeout: 20000 })
 
     test("is_unstable_agent=true should force background but wait for result", async () => {
@@ -2827,6 +2963,7 @@ describe("sisyphus-task", () => {
       // then - sisyphus-junior override model should be used, not category default
       expect(launchInput.model.providerID).toBe("anthropic")
       expect(launchInput.model.modelID).toBe("claude-sonnet-4-6")
+      expect(launchInput.fallbackChain).toBeUndefined()
     })
 
     test("sisyphus-junior model override works with user-defined category (#1295)", async () => {

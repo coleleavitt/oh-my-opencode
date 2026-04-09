@@ -3,6 +3,7 @@ import type { DelegateTaskArgs, ToolContextWithMetadata, DelegatedModelConfig } 
 import type { ExecutorContext, ParentContext } from "./executor-types"
 import { getTaskToastManager } from "../../features/task-toast-manager"
 import { storeToolMetadata } from "../../features/tool-metadata-store"
+import { resolveCallID } from "./resolve-call-id"
 import { subagentSessions, syncSubagentSessions, setSessionAgent } from "../../features/claude-code-session-state"
 import { log } from "../../shared/logger"
 import { SessionCategoryRegistry } from "../../shared/session-category-registry"
@@ -115,8 +116,9 @@ export async function executeSyncTask(
       },
     }
     await ctx.metadata?.(syncTaskMeta)
-    if (ctx.callID) {
-      storeToolMetadata(ctx.sessionID, ctx.callID, syncTaskMeta)
+    const callID = resolveCallID(ctx)
+    if (callID) {
+      storeToolMetadata(ctx.sessionID, callID, syncTaskMeta)
     }
 
     const promptError = await deps.sendSyncPrompt(client, {
@@ -139,7 +141,6 @@ export async function executeSyncTask(
         agentToUse,
         toastManager,
         taskId,
-        directory,
       }, syncPollTimeoutMs)
       if (pollError) {
         return pollError
