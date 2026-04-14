@@ -22,6 +22,10 @@ import {
   buildParallelDelegationSection,
   buildNonClaudePlannerSection,
   buildAntiDuplicationSection,
+  buildActionsWithCareSection,
+  buildNoGoldPlatingSection,
+  buildSecurityCodingSection,
+  buildToolResultPreservationSection,
   categorizeTools,
 } from "../dynamic-agent-prompt-builder";
 
@@ -159,6 +163,10 @@ export function buildDefaultSisyphusPrompt(
   const oracleSection = buildOracleSection(availableAgents);
   const hardBlocks = buildHardBlocksSection();
   const antiPatterns = buildAntiPatternsSection();
+  const actionsWithCare = buildActionsWithCareSection();
+  const noGoldPlating = buildNoGoldPlatingSection();
+  const securityCoding = buildSecurityCodingSection();
+  const toolResultPreservation = buildToolResultPreservationSection();
   const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
@@ -575,6 +583,14 @@ If the user's approach seems problematic:
 ${hardBlocks}
 
 ${antiPatterns}
+
+${actionsWithCare}
+
+${noGoldPlating}
+
+${securityCoding}
+
+${toolResultPreservation}
 
 ## Soft Guidelines
 

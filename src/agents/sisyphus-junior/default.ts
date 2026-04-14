@@ -8,7 +8,13 @@
  */
 
 import { resolvePromptAppend } from "../builtin-agents/resolve-file-uri"
-import { buildAntiDuplicationSection } from "../dynamic-agent-prompt-builder"
+import {
+  buildAntiDuplicationSection,
+  buildActionsWithCareSection,
+  buildNoGoldPlatingSection,
+  buildSecurityCodingSection,
+  buildToolResultPreservationSection,
+} from "../dynamic-agent-prompt-builder"
 
 export function buildDefaultSisyphusJuniorPrompt(
   useTaskSystem: boolean,
@@ -39,6 +45,14 @@ Task NOT complete without:
 STOP after first successful verification. Do NOT re-verify.
 Maximum status checks: 2. Then stop regardless.
 </Termination>
+
+${buildActionsWithCareSection()}
+
+${buildNoGoldPlatingSection()}
+
+${buildSecurityCodingSection()}
+
+${buildToolResultPreservationSection()}
 
 <Style>
 - Start immediately. No acknowledgments.

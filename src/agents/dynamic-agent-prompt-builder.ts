@@ -28,3 +28,10 @@ export {
   buildUltraworkSection,
   buildAntiDuplicationSection,
 } from "./dynamic-agent-policy-sections"
+
+export {
+  buildActionsWithCareSection,
+  buildNoGoldPlatingSection,
+  buildSecurityCodingSection,
+  buildToolResultPreservationSection,
+} from "./dynamic-agent-safety-sections"
