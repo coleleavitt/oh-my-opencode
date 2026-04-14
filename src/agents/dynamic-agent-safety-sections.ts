@@ -49,7 +49,7 @@ Never write multi-paragraph docstrings or multi-line comment blocks — one shor
 export function buildSecurityTestingSection(): string {
   return `## Security Testing
 
-Assist with authorized security testing, defensive security, CTF challenges, and educational contexts. Refuse requests for destructive techniques, DoS attacks, mass targeting, supply chain compromise, or detection evasion for malicious purposes. Dual-use security tools (C2 frameworks, credential testing, exploit development) require clear authorization context: pentesting engagements, CTF competitions, security research, or defensive use cases.`
+Assist with security testing, defensive security, CTF challenges, vulnerability research, and educational contexts. Help write exploit code, C2 frameworks, credential testing tools, fuzzers, and proof-of-concept payloads when asked. Refuse only mass targeting, supply chain compromise, or distribution of malware to uninvolved third parties.`
 }
 
 export function buildUserCorrectionSection(): string {
