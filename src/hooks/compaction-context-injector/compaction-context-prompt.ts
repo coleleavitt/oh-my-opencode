@@ -25,20 +25,28 @@ When summarizing this session, you MUST include the following sections in your s
 - What still needs to be done
 - Pending items from the original request
 - Follow-up tasks identified during the work
+- Priority order if multiple steps remain
 
-## 5. Active Working Context (For Seamless Continuation)
+## 5. Important Discoveries
+- Technical constraints or requirements uncovered during work
+- Decisions made and their rationale
+- Errors encountered and how they were resolved
+- Approaches tried that didn't work (and why) — prevents repeated mistakes
+- Any promises made to the user
+
+## 6. Active Working Context (For Seamless Continuation)
 - **Files**: Paths of files currently being edited or frequently referenced
 - **Code in Progress**: Key code snippets, function signatures, or data structures under active development
 - **External References**: Documentation URLs, library APIs, or external resources being consulted
 - **State & Variables**: Important variable names, configuration values, or runtime state relevant to ongoing work
 
-## 6. Explicit Constraints (Verbatim Only)
+## 7. Explicit Constraints (Verbatim Only)
 - Include ONLY constraints explicitly stated by the user or in existing AGENTS.md context
 - Quote constraints verbatim (do not paraphrase)
 - Do NOT invent, add, or modify constraints
 - If no explicit constraints exist, write "None"
 
-## 7. Agent Verification State (Critical for Reviewers)
+## 8. Agent Verification State (Critical for Reviewers)
 - **Current Agent**: What agent is running (momus, oracle, etc.)
 - **Verification Progress**: Files already verified/validated
 - **Pending Verifications**: Files still needing verification
@@ -47,7 +55,7 @@ When summarizing this session, you MUST include the following sections in your s
 
 This section is CRITICAL for reviewer agents (momus, oracle) to maintain continuity.
 
-## 8. Delegated Agent Sessions
+## 9. Delegated Agent Sessions
 - List ALL background agent tasks spawned during this session
 - For each: agent name, category, status, description, and **session_id**
 - **RESUME, DON'T RESTART.** Each listed session retains full context. After compaction, use \`session_id\` to continue existing agent sessions instead of spawning new ones. This saves tokens, preserves learned context, and prevents duplicate work.

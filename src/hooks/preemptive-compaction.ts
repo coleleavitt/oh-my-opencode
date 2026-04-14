@@ -9,8 +9,23 @@ import { resolveCompactionModel } from "./shared/compaction-model-resolver"
 import { createPostCompactionDegradationMonitor } from "./preemptive-compaction-degradation-monitor"
 
 const PREEMPTIVE_COMPACTION_TIMEOUT_MS = 60_000
-const PREEMPTIVE_COMPACTION_THRESHOLD = 0.78
 const PREEMPTIVE_COMPACTION_COOLDOWN_MS = 60_000
+
+// CC v105: e48() computes threshold as (contextWindow - reserveTokens).
+// For 200K context → 78% = ~156K. For 1M context → ~85% = ~850K.
+// Reserve 44K tokens for the response + tools regardless of window size.
+const COMPACT_RESERVE_TOKENS = 44_000
+const FALLBACK_THRESHOLD = 0.78
+
+function getCompactThreshold(actualLimit: number): number {
+  const pctOverride = process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+  if (pctOverride) {
+    const pct = parseFloat(pctOverride)
+    if (!isNaN(pct) && pct > 0 && pct <= 100) return pct / 100
+  }
+  const computed = (actualLimit - COMPACT_RESERVE_TOKENS) / actualLimit
+  return Math.max(0.5, Math.min(computed, 0.92))
+}
 
 declare function setTimeout(handler: () => void, timeout?: number): unknown
 declare function clearTimeout(timeoutID: unknown): void
@@ -109,7 +124,8 @@ export function createPreemptiveCompactionHook(
 
     const totalInputTokens = (cached.tokens.input ?? 0) + (cached.tokens.cache?.read ?? 0)
     const usageRatio = totalInputTokens / actualLimit
-    if (usageRatio < PREEMPTIVE_COMPACTION_THRESHOLD || !cached.modelID) return
+    const threshold = getCompactThreshold(actualLimit)
+    if (usageRatio < threshold || !cached.modelID) return
 
     compactionInProgress.add(sessionID)
     lastCompactionTime.set(sessionID, Date.now())
@@ -143,7 +159,7 @@ export function createPreemptiveCompactionHook(
       ctx.client.tui.showToast({
         body: {
           title: "Preemptive compaction failed",
-          message: `Context window is above ${Math.round(PREEMPTIVE_COMPACTION_THRESHOLD * 100)}% and auto-compaction could not run. The session may grow large. Error: ${String(error)}`,
+          message: `Context window is above ${Math.round(getCompactThreshold(actualLimit) * 100)}% and auto-compaction could not run. The session may grow large. Error: ${String(error)}`,
           variant: "warning",
           duration: 10000,
         },
