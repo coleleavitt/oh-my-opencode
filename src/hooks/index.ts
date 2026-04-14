@@ -98,3 +98,7 @@ export {
   type SessionCost,
   type ModelCost,
 } from "./cost-tracker";
+export {
+  createAwaySummaryHook,
+  type AwaySummaryOptions,
+} from "./away-summary";
