@@ -28,6 +28,7 @@ import {
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
+  buildMemoryGuidanceSection,
   categorizeTools,
 } from "../dynamic-agent-prompt-builder";
 
@@ -171,6 +172,7 @@ export function buildDefaultSisyphusPrompt(
   const toolResultPreservation = buildToolResultPreservationSection();
   const commentQuality = buildCommentQualitySection();
   const aiSlopAwareness = buildAiSlopAwarenessSection();
+  const memoryGuidance = buildMemoryGuidanceSection();
   const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
@@ -599,6 +601,8 @@ ${toolResultPreservation}
 ${commentQuality}
 
 ${aiSlopAwareness}
+
+${memoryGuidance}
 
 ## Soft Guidelines
 

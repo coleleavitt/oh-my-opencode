@@ -27,6 +27,9 @@ import {
   createTaskList,
   createTaskUpdateTool,
   createHashlineEditTool,
+  createSaveMemoryTool,
+  createDeleteMemoryTool,
+  createListMemoriesTool,
 } from "../tools"
 import { getMainSessionID } from "../features/claude-code-session-state"
 import { filterDisabledTools } from "../shared/disabled-tools"
@@ -198,8 +201,15 @@ export function createToolRegistry(args: {
     ? { edit: createHashlineEditTool(ctx) }
     : {}
 
+  const memoryTools: Record<string, ToolDefinition> = {
+    memory_save: createSaveMemoryTool(ctx.directory),
+    memory_delete: createDeleteMemoryTool(ctx.directory),
+    memory_list: createListMemoriesTool(ctx.directory),
+  }
+
   const allTools: Record<string, ToolDefinition> = {
     ...builtinTools,
+    ...memoryTools,
     ...createGrepTools(ctx),
     ...createGlobTools(ctx),
     ...createAstGrepTools(ctx),

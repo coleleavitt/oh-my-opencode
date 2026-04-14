@@ -29,6 +29,7 @@ import {
   createLegacyPluginToastHook,
   createGitDiffInjectorHook,
   createCostTrackerHook,
+  createMemoryInjectionHook,
 } from "../../hooks";
 import { createAnthropicEffortHook } from "../../hooks/anthropic-effort";
 import {
@@ -80,6 +81,7 @@ export type SessionHooks = {
   legacyPluginToast: ReturnType<typeof createLegacyPluginToastHook> | null;
   gitDiffInjector: ReturnType<typeof createGitDiffInjectorHook> | null;
   costTracker: ReturnType<typeof createCostTrackerHook> | null;
+  memoryInjection: ReturnType<typeof createMemoryInjectionHook> | null;
 };
 
 export function createSessionHooks(args: {
@@ -344,6 +346,10 @@ export function createSessionHooks(args: {
     createCostTrackerHook(),
   );
 
+  const memoryInjection = safeHook("memory-injection" as HookName, () =>
+    createMemoryInjectionHook(ctx.directory),
+  );
+
   return {
     contextWindowMonitor,
     preemptiveCompaction,
@@ -370,6 +376,7 @@ export function createSessionHooks(args: {
     runtimeFallback,
     legacyPluginToast,
     gitDiffInjector,
+    memoryInjection,
     costTracker,
   };
 }

@@ -38,4 +38,5 @@ export {
   buildAiSlopAwarenessSection,
   buildSecurityTestingSection,
   buildUserCorrectionSection,
+  buildMemoryGuidanceSection,
 } from "./dynamic-agent-safety-sections"

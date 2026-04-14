@@ -16,6 +16,7 @@ import {
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
+  buildMemoryGuidanceSection,
 } from "../dynamic-agent-prompt-builder"
 
 export function buildDefaultSisyphusJuniorPrompt(
@@ -59,6 +60,8 @@ ${buildToolResultPreservationSection()}
 ${buildCommentQualitySection()}
 
 ${buildAiSlopAwarenessSection()}
+
+${buildMemoryGuidanceSection()}
 
 <Style>
 - Start immediately. No acknowledgments.

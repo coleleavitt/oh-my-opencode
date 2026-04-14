@@ -102,3 +102,4 @@ export {
   createAwaySummaryHook,
   type AwaySummaryOptions,
 } from "./away-summary";
+export { createMemoryInjectionHook } from "./memory-injection";

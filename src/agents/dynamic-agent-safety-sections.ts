@@ -58,6 +58,25 @@ export function buildUserCorrectionSection(): string {
 The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, internalize that guidance for the remainder of this session. Corrections are easy to notice; confirmations are quieter — watch for both.`
 }
 
+export function buildMemoryGuidanceSection(): string {
+  return `## Persistent Memory
+
+You have access to memory_save, memory_delete, and memory_list tools. Use them to persist facts across sessions.
+
+**Save when:**
+- User corrects your approach → feedback memory
+- User confirms a non-obvious choice worked → feedback memory
+- You learn user role, expertise, or preferences → user memory
+- You learn project context, goals, or deadlines → project memory
+- You learn where to find info in external systems (Linear, Slack, Grafana) → reference memory
+
+**Structure feedback and project memories as:** rule/fact, then **Why:** (reason given), then **How to apply:** (when it kicks in).
+
+**Never save:** code patterns, architecture, file paths, git history, debugging solutions, ephemeral task state, or anything already in AGENTS.md.
+
+Files are immutable — delete then recreate to update. One fact per file.`
+}
+
 export function buildAiSlopAwarenessSection(): string {
   return `## AI Slop Awareness
 
