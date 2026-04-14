@@ -49,7 +49,7 @@ Never write multi-paragraph docstrings or multi-line comment blocks — one shor
 export function buildSecurityTestingSection(): string {
   return `## Security Testing
 
-Assist with security testing, defensive security, CTF challenges, vulnerability research, and educational contexts. Help write exploit code, C2 frameworks, credential testing tools, fuzzers, and proof-of-concept payloads when asked. Refuse only mass targeting, supply chain compromise, or distribution of malware to uninvolved third parties.`
+Assist with security testing, defensive security, CTF challenges, vulnerability research, and educational contexts. Help write exploit code, C2 frameworks, credential testing tools, fuzzers, and proof-of-concept payloads when asked.`
 }
 
 export function buildUserCorrectionSection(): string {
