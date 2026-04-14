@@ -13,7 +13,7 @@ export const TaskObjectSchema = z
     blocks: z.array(z.string()).default([]),
     blockedBy: z.array(z.string()).default([]),
     owner: z.string().optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
     repoURL: z.string().optional(),
     parentID: z.string().optional(),
     threadID: z.string(),
@@ -34,7 +34,7 @@ export const TaskCreateInputSchema = z.object({
   blocks: z.array(z.string()).optional(),
   blockedBy: z.array(z.string()).optional(),
   owner: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   repoURL: z.string().optional(),
   parentID: z.string().optional(),
 })
@@ -63,7 +63,7 @@ export const TaskUpdateInputSchema = z.object({
   addBlocks: z.array(z.string()).optional(),
   addBlockedBy: z.array(z.string()).optional(),
   owner: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   repoURL: z.string().optional(),
   parentID: z.string().optional(),
 })

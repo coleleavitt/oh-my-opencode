@@ -55,13 +55,14 @@ describe("createAnthropicEffortHook", () => {
       expect(output.options.effort).toBe("max")
     })
 
-    it("injects effort max for another opus family model such as opus-4-5", async () => {
+    it("clamps effort to high for opus-4-5 (max not supported)", async () => {
       const hook = createAnthropicEffortHook()
       const { input, output } = createMockParams({ modelID: "claude-opus-4-5" })
 
       await hook["chat.params"](input, output)
 
-      expect(output.options.effort).toBe("max")
+      expect(output.options.effort).toBe("high")
+      expect(input.message.variant).toBe("high")
     })
 
     it("injects effort max for dotted opus ids", async () => {
@@ -73,8 +74,8 @@ describe("createAnthropicEffortHook", () => {
       expect(output.options.effort).toBe("max")
     })
 
-    it("should preserve max for other opus model IDs such as opus-4-5", async () => {
-      //#given another opus model id that is not 4.6
+    it("clamps max to high for opus-4-5 (only 4.6+ supports max)", async () => {
+      //#given opus-4-5 model with variant max
       const hook = createAnthropicEffortHook()
       const { input, output } = createMockParams({
         modelID: "claude-opus-4-5",
@@ -83,9 +84,9 @@ describe("createAnthropicEffortHook", () => {
       //#when chat.params hook is called
       await hook["chat.params"](input, output)
 
-      //#then max should still be treated as valid for opus family
-      expect(output.options.effort).toBe("max")
-      expect(input.message.variant).toBe("max")
+      //#then max should be clamped to high (opus-4-5 doesn't support max)
+      expect(output.options.effort).toBe("high")
+      expect(input.message.variant).toBe("high")
     })
   })
 
