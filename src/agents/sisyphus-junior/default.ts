@@ -14,6 +14,8 @@ import {
   buildNoGoldPlatingSection,
   buildSecurityCodingSection,
   buildToolResultPreservationSection,
+  buildCommentQualitySection,
+  buildAiSlopAwarenessSection,
 } from "../dynamic-agent-prompt-builder"
 
 export function buildDefaultSisyphusJuniorPrompt(
@@ -53,6 +55,10 @@ ${buildNoGoldPlatingSection()}
 ${buildSecurityCodingSection()}
 
 ${buildToolResultPreservationSection()}
+
+${buildCommentQualitySection()}
+
+${buildAiSlopAwarenessSection()}
 
 <Style>
 - Start immediately. No acknowledgments.

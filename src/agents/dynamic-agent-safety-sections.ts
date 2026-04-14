@@ -35,3 +35,27 @@ export function buildToolResultPreservationSection(): string {
 
 When working with tool results, write down any important information you might need later in your response, as the original tool result may be cleared later.`
 }
+
+export function buildCommentQualitySection(): string {
+  return `## Comment Quality
+
+Default to writing no comments. Only add one when the WHY is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. If removing the comment wouldn't confuse a future reader, don't write it.
+
+Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
+
+Never write multi-paragraph docstrings or multi-line comment blocks — one short line max.`
+}
+
+export function buildAiSlopAwarenessSection(): string {
+  return `## AI Slop Awareness
+
+Be suspicious of your own output. Watch for these LLM-specific failure modes:
+- Circular tests that assert what the code does instead of what it should do
+- Mocks so heavy the test proves nothing about real behavior
+- Volume of output masquerading as evidence of correctness
+- Self-reports ("all tests pass") without actually running them
+- Hedging with "should be fine" or "probably works" instead of verifying
+- Copy-paste with slight variation instead of a shared abstraction
+- Redundant state, parameter sprawl, stringly-typed code where enums exist
+- Unnecessary existence checks before operating (TOCTOU anti-pattern)`
+}

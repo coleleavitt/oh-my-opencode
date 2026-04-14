@@ -34,4 +34,6 @@ export {
   buildNoGoldPlatingSection,
   buildSecurityCodingSection,
   buildToolResultPreservationSection,
+  buildCommentQualitySection,
+  buildAiSlopAwarenessSection,
 } from "./dynamic-agent-safety-sections"
