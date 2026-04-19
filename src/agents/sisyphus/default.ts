@@ -29,6 +29,15 @@ import {
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
   buildMemoryGuidanceSection,
+  buildScopeEscalationSection,
+  buildVerifiedVsAssumedSection,
+  buildAmbiguousScopeSection,
+  buildQuestionsAreNotConsentSection,
+  buildBoundariesStayInForceSection,
+  buildSilenceIsNotConsentSection,
+  buildSharedInfraBiasSection,
+  buildPreemptiveBlockSection,
+  buildUnseenToolResultsSection,
   categorizeTools,
 } from "../dynamic-agent-prompt-builder";
 
@@ -173,6 +182,15 @@ export function buildDefaultSisyphusPrompt(
   const commentQuality = buildCommentQualitySection();
   const aiSlopAwareness = buildAiSlopAwarenessSection();
   const memoryGuidance = buildMemoryGuidanceSection();
+  const scopeEscalation = buildScopeEscalationSection();
+  const verifiedVsAssumed = buildVerifiedVsAssumedSection();
+  const ambiguousScope = buildAmbiguousScopeSection();
+  const questionsAreNotConsent = buildQuestionsAreNotConsentSection();
+  const boundariesStayInForce = buildBoundariesStayInForceSection();
+  const silenceIsNotConsent = buildSilenceIsNotConsentSection();
+  const sharedInfraBias = buildSharedInfraBiasSection();
+  const preemptiveBlock = buildPreemptiveBlockSection();
+  const unseenToolResults = buildUnseenToolResultsSection();
   const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
@@ -251,11 +269,11 @@ This verbalization anchors your routing decision and makes your reasoning transp
 
 **Delegation Check (MANDATORY before acting directly):**
 1. Is there a specialized agent that perfectly matches this request?
-2. If not, is there a \`task\` category best describes this task? (visual-engineering, ultrabrain, quick etc.) What skills are available to equip the agent with?
-   - MUST FIND skills to use, for: \`task(load_skills=[{skill1}, ...])\` MUST PASS SKILL AS TASK PARAMETER.
-3. Can I do it myself for the best result, FOR SURE? REALLY, REALLY, THERE IS NO APPROPRIATE CATEGORIES TO WORK WITH?
+2. If not, which \`task\` category best describes this task? (visual-engineering, ultrabrain, quick, etc.) What skills are available to equip the agent with?
+   - MUST pass skills as task parameter: \`task(load_skills=[{skill1}, ...])\`
+3. Only execute directly if the work is trivial AND no category/agent fits — and state your reason.
 
-**Default Bias: DELEGATE. WORK YOURSELF ONLY WHEN IT IS SUPER SIMPLE.**
+**Default Bias: DELEGATE.** Execute directly only when the operation is one-shot, < 30 seconds of work, and has no parallelizable components.
 
 ### When to Challenge the User
 If you observe:
@@ -480,7 +498,7 @@ If project has build/test commands, run them at task completion.
 - **Test run** → Pass (or explicit note of pre-existing failures)
 - **Delegation** → Agent result received and verified
 
-**NO EVIDENCE = NOT COMPLETE.**
+**NO EVIDENCE = NOT COMPLETE.** Do not claim "verified" without running the check. If you're guessing based on pattern-matching, label it as an assumption — see the Verified vs Assumed rule in Constraints.
 
 ---
 
@@ -551,7 +569,10 @@ ${taskManagementSection}
 - Answer directly without preamble
 - Don't summarize what you did unless asked
 - Don't explain your code unless asked
-- One word answers are acceptable when appropriate
+- State in one sentence what you're about to do before a batch of tool calls — not before every call
+- Between tool calls: brief updates only at key moments, not narration of each action
+- Final response: one or two sentences unless the user asked for detail
+- One-word answers are fine when appropriate
 
 ### No Flattery
 Never start responses with:
@@ -579,6 +600,8 @@ If the user's approach seems problematic:
 - Concisely state your concern and alternative
 - Ask if they want to proceed anyway
 
+If the user's request would require a scope escalation to fulfill (e.g. "investigate X" when X would actually need infrastructure changes to resolve), raise the scope mismatch explicitly before acting — see the Scope Escalation rule in Constraints.
+
 ### Match User's Style
 - If user is terse, be terse
 - If user wants detail, provide detail
@@ -601,6 +624,24 @@ ${toolResultPreservation}
 ${commentQuality}
 
 ${aiSlopAwareness}
+
+${verifiedVsAssumed}
+
+${scopeEscalation}
+
+${ambiguousScope}
+
+${questionsAreNotConsent}
+
+${boundariesStayInForce}
+
+${silenceIsNotConsent}
+
+${sharedInfraBias}
+
+${preemptiveBlock}
+
+${unseenToolResults}
 
 ${memoryGuidance}
 

@@ -17,6 +17,15 @@ import {
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
   buildMemoryGuidanceSection,
+  buildScopeEscalationSection,
+  buildVerifiedVsAssumedSection,
+  buildAmbiguousScopeSection,
+  buildQuestionsAreNotConsentSection,
+  buildBoundariesStayInForceSection,
+  buildSilenceIsNotConsentSection,
+  buildSharedInfraBiasSection,
+  buildPreemptiveBlockSection,
+  buildUnseenToolResultsSection,
 } from "../dynamic-agent-prompt-builder"
 
 export function buildDefaultSisyphusJuniorPrompt(
@@ -60,6 +69,24 @@ ${buildToolResultPreservationSection()}
 ${buildCommentQualitySection()}
 
 ${buildAiSlopAwarenessSection()}
+
+${buildVerifiedVsAssumedSection()}
+
+${buildScopeEscalationSection()}
+
+${buildAmbiguousScopeSection()}
+
+${buildQuestionsAreNotConsentSection()}
+
+${buildBoundariesStayInForceSection()}
+
+${buildSilenceIsNotConsentSection()}
+
+${buildSharedInfraBiasSection()}
+
+${buildPreemptiveBlockSection()}
+
+${buildUnseenToolResultsSection()}
 
 ${buildMemoryGuidanceSection()}
 
