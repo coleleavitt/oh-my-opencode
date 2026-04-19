@@ -44,6 +44,7 @@ export {
   buildAmbiguousScopeSection,
   buildPreExistingIssuesSection,
   buildRefactoringDecisionSection,
+  buildHooksGuidanceSection,
 } from "./dynamic-agent-safety-sections"
 
 export {

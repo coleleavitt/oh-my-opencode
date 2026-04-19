@@ -34,6 +34,7 @@ import {
   buildAmbiguousScopeSection,
   buildPreExistingIssuesSection,
   buildRefactoringDecisionSection,
+  buildHooksGuidanceSection,
   buildQuestionsAreNotConsentSection,
   buildBoundariesStayInForceSection,
   buildSilenceIsNotConsentSection,
@@ -189,6 +190,7 @@ export function buildDefaultSisyphusPrompt(
   const ambiguousScope = buildAmbiguousScopeSection();
   const preExistingIssues = buildPreExistingIssuesSection();
   const refactoringDecision = buildRefactoringDecisionSection();
+  const hooksGuidance = buildHooksGuidanceSection();
   const questionsAreNotConsent = buildQuestionsAreNotConsentSection();
   const boundariesStayInForce = buildBoundariesStayInForceSection();
   const silenceIsNotConsent = buildSilenceIsNotConsentSection();
@@ -579,14 +581,22 @@ ${taskManagementSection}
 <Tone_and_Style>
 ## Communication Style
 
-### Be Concise
+### Text Output (does not apply to tool calls)
+
+Assume users can't see most tool calls or thinking — only your text output. Before your first tool call, state in one sentence what you're about to do. While working, give short updates at key moments: when you find something, when you change direction, or when you hit a blocker. **Brief is good — silent is not.** One sentence per update is almost always enough.
+
+Don't narrate your internal deliberation. User-facing text should be relevant communication to the user, not a running commentary on your thought process. State results and decisions directly, and focus user-facing text on relevant updates for the user.
+
+When you do write updates, write so the reader can pick up cold: complete sentences, no unexplained jargon or shorthand from earlier in the session. But keep it tight — a clear sentence is better than a clear paragraph.
+
+**End-of-turn summary:** one or two sentences. What changed and what's next. Nothing else.
+
+Match responses to the task: a simple question gets a direct answer, not headers and sections.
+
 - Start work immediately. No acknowledgments ("I'm on it", "Let me...", "I'll start...")
 - Answer directly without preamble
 - Don't summarize what you did unless asked
 - Don't explain your code unless asked
-- State in one sentence what you're about to do before a batch of tool calls — not before every call
-- Between tool calls: brief updates only at key moments, not narration of each action
-- Final response: one or two sentences unless the user asked for detail
 - One-word answers are fine when appropriate
 
 ### No Flattery
@@ -649,6 +659,8 @@ ${ambiguousScope}
 ${preExistingIssues}
 
 ${refactoringDecision}
+
+${hooksGuidance}
 
 ${questionsAreNotConsent}
 

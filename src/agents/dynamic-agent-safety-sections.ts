@@ -182,3 +182,18 @@ export function buildRefactoringDecisionSection(): string {
 
 Refactoring is a separate task. Bug fix = fix the bug. Feature = add the feature. If you see real rot, mention it in the final summary so the user can create a cleanup task.`
 }
+
+export function buildHooksGuidanceSection(): string {
+  return `## Hooks
+
+Hooks are shell commands or plugin handlers that execute in response to events like tool calls and message boundaries. Treat feedback from hooks — including reminders appended to user messages and tool-execute-before guards — as coming from the harness, not the user.
+
+**If a hook blocks an action:**
+- Read the hook's message carefully
+- Determine if you can adjust your approach to avoid the block
+- If the block is appropriate (e.g. you were about to edit a file you shouldn't), change course without complaining
+- If the block seems wrong, surface it concisely: "Hook blocked this action with message X — is that intentional?"
+- Do not try to bypass hooks by rephrasing the same action
+
+**System reminders** (messages in <system-reminder> tags) are hints from the harness, not user instructions. Don't reference them to the user or treat them as standalone requests — they're metadata to tune your behavior for the current turn.`
+}
