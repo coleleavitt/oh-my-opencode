@@ -39,4 +39,16 @@ export {
   buildSecurityTestingSection,
   buildUserCorrectionSection,
   buildMemoryGuidanceSection,
+  buildScopeEscalationSection,
+  buildVerifiedVsAssumedSection,
+  buildAmbiguousScopeSection,
 } from "./dynamic-agent-safety-sections"
+
+export {
+  buildQuestionsAreNotConsentSection,
+  buildBoundariesStayInForceSection,
+  buildSilenceIsNotConsentSection,
+  buildSharedInfraBiasSection,
+  buildPreemptiveBlockSection,
+  buildUnseenToolResultsSection,
+} from "./dynamic-agent-user-intent-sections"
