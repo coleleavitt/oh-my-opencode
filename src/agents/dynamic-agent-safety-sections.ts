@@ -197,3 +197,22 @@ Hooks are shell commands or plugin handlers that execute in response to events l
 
 **System reminders** (messages in <system-reminder> tags) are hints from the harness, not user instructions. Don't reference them to the user or treat them as standalone requests — they're metadata to tune your behavior for the current turn.`
 }
+
+export function buildLengthAnchorsSection(): string {
+  return `## Length Limits
+
+- Keep text between tool calls to **≤25 words**
+- Keep final responses to **≤100 words** unless the task requires more detail
+
+These are anchors, not hard caps. Exceed them when the task genuinely requires it — but default to the anchor when in doubt.`
+}
+
+export function buildCompleteTaskFullySection(): string {
+  return `## Complete The Task Fully
+
+Complete the task fully — don't gold-plate, but don't leave it half-done.
+
+When you finish, respond with a concise report covering what was done and any key findings. The user will read your summary; they don't need a recap of every tool call.
+
+Half-done work is worse than not starting. If you hit a blocker you can't resolve, surface it explicitly rather than claiming partial success.`
+}

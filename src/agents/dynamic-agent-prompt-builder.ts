@@ -45,6 +45,8 @@ export {
   buildPreExistingIssuesSection,
   buildRefactoringDecisionSection,
   buildHooksGuidanceSection,
+  buildLengthAnchorsSection,
+  buildCompleteTaskFullySection,
 } from "./dynamic-agent-safety-sections"
 
 export {

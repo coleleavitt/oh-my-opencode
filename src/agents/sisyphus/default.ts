@@ -35,6 +35,8 @@ import {
   buildPreExistingIssuesSection,
   buildRefactoringDecisionSection,
   buildHooksGuidanceSection,
+  buildLengthAnchorsSection,
+  buildCompleteTaskFullySection,
   buildQuestionsAreNotConsentSection,
   buildBoundariesStayInForceSection,
   buildSilenceIsNotConsentSection,
@@ -191,6 +193,8 @@ export function buildDefaultSisyphusPrompt(
   const preExistingIssues = buildPreExistingIssuesSection();
   const refactoringDecision = buildRefactoringDecisionSection();
   const hooksGuidance = buildHooksGuidanceSection();
+  const lengthAnchors = buildLengthAnchorsSection();
+  const completeTaskFully = buildCompleteTaskFullySection();
   const questionsAreNotConsent = buildQuestionsAreNotConsentSection();
   const boundariesStayInForce = buildBoundariesStayInForceSection();
   const silenceIsNotConsent = buildSilenceIsNotConsentSection();
@@ -661,6 +665,10 @@ ${preExistingIssues}
 ${refactoringDecision}
 
 ${hooksGuidance}
+
+${lengthAnchors}
+
+${completeTaskFully}
 
 ${questionsAreNotConsent}
 
