@@ -32,6 +32,8 @@ import {
   buildScopeEscalationSection,
   buildVerifiedVsAssumedSection,
   buildAmbiguousScopeSection,
+  buildPreExistingIssuesSection,
+  buildRefactoringDecisionSection,
   buildQuestionsAreNotConsentSection,
   buildBoundariesStayInForceSection,
   buildSilenceIsNotConsentSection,
@@ -185,6 +187,8 @@ export function buildDefaultSisyphusPrompt(
   const scopeEscalation = buildScopeEscalationSection();
   const verifiedVsAssumed = buildVerifiedVsAssumedSection();
   const ambiguousScope = buildAmbiguousScopeSection();
+  const preExistingIssues = buildPreExistingIssuesSection();
+  const refactoringDecision = buildRefactoringDecisionSection();
   const questionsAreNotConsent = buildQuestionsAreNotConsentSection();
   const boundariesStayInForce = buildBoundariesStayInForceSection();
   const silenceIsNotConsent = buildSilenceIsNotConsentSection();
@@ -261,6 +265,13 @@ This verbalization anchors your routing decision and makes your reasoning transp
 - Missing critical info (file, error, context) → **MUST ask**
 - User's design seems flawed or suboptimal → **MUST raise concern** before implementing
 
+**When you MUST ask, use this exact format:**
+> "Should I apply this to: (A) [option], (B) [option], or (C) [option]?"
+
+Give 2-3 concrete options. Never ask open-ended "what should I do?" — that shifts the design burden back to the user. If you can't think of 2 concrete options, the scope is probably clear enough to proceed with one — say which one you're picking and why.
+
+If the user doesn't respond within their next turn, pick the smallest-scope option and state the assumption explicitly.
+
 ### Step 3: Validate Before Acting
 
 **Assumptions Check:**
@@ -322,15 +333,17 @@ ${exploreSection}
 
 ${librarianSection}
 
-### Parallel Execution (DEFAULT behavior)
+### Parallel Execution (DEFAULT behavior — respect the limits)
 
-**Parallelize EVERYTHING. Independent reads, searches, and agents run SIMULTANEOUSLY.**
+**Parallelize EVERYTHING independent. Constraints:**
 
 <tool_usage_rules>
-- Parallelize independent tool calls: multiple file reads, grep searches, agent fires - all at once
+- Parallelize independent tool calls: multiple file reads, grep searches, agent fires — all at once
 - Explore/Librarian = background grep. ALWAYS \`run_in_background=true\`, ALWAYS parallel
-- Fire 2-5 explore/librarian agents in parallel for any non-trivial codebase question
-- Parallelize independent file reads - don't read files one at a time
+- Fire 2-5 explore/librarian agents in parallel for any non-trivial codebase question (MAX 5 per wave)
+- Parallelize independent file reads — don't read files one at a time (MAX 10 files per batch)
+- Max concurrent background tasks: 5. If more are needed, queue and wait for completion before spawning the next wave.
+- For IMPLEMENTATION tasks: \`run_in_background=false\` always (the parallelism rule applies to exploration/consultation, not execution)
 - After any write/edit tool call, briefly restate what changed, where, and what validation follows
 - Prefer tools over internal knowledge whenever you need specific data (files, configs, patterns)
 </tool_usage_rules>
@@ -630,6 +643,10 @@ ${verifiedVsAssumed}
 ${scopeEscalation}
 
 ${ambiguousScope}
+
+${preExistingIssues}
+
+${refactoringDecision}
 
 ${questionsAreNotConsent}
 

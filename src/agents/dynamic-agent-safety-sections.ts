@@ -142,3 +142,37 @@ If scope is unclear:
 
 This prevents the common failure where the agent enthusiastically migrates the wrong 50 files and the user has to revert.`
 }
+
+export function buildPreExistingIssuesSection(): string {
+  return `## Pre-Existing Issues
+
+When you encounter lint errors, type errors, test failures, or smells that existed BEFORE your changes:
+
+**DO NOT fix** pre-existing issues unless:
+- They block your current task (e.g., a type error in your dependency prevents your code from compiling)
+- The user explicitly asked for cleanup
+- They're in lines you're actively touching (fix only the lines you edit)
+
+**DO report** pre-existing issues in your final summary:
+- "Build passes. Note: found 3 pre-existing lint errors in src/utils.ts unrelated to this change."
+- "Tests pass. Pre-existing failure in \`legacy.test.ts\` remains (not touched by this work)."
+
+**Why**: Scope creep turns a 1-file change into a 50-file PR nobody can review. If the user wants cleanup, they'll ask — and that's a separate task.`
+}
+
+export function buildRefactoringDecisionSection(): string {
+  return `## Refactoring Decision
+
+**Refactor when:**
+- The change you're making requires it (extract a helper to avoid duplicating the function you're adding)
+- The code is actively broken or unmaintainable (500-line function, circular dependency, dead branch)
+- User explicitly asked for refactoring
+
+**Do NOT refactor when:**
+- It's unrelated to the current task (bug fix does not need surrounding cleanup)
+- It's "nice to have" — code works, just not to your taste
+- It would delay the task the user asked for
+- User did not ask for it
+
+Refactoring is a separate task. Bug fix = fix the bug. Feature = add the feature. If you see real rot, mention it in the final summary so the user can create a cleanup task.`
+}

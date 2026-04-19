@@ -20,6 +20,8 @@ import {
   buildScopeEscalationSection,
   buildVerifiedVsAssumedSection,
   buildAmbiguousScopeSection,
+  buildPreExistingIssuesSection,
+  buildRefactoringDecisionSection,
   buildQuestionsAreNotConsentSection,
   buildBoundariesStayInForceSection,
   buildSilenceIsNotConsentSection,
@@ -75,6 +77,10 @@ ${buildVerifiedVsAssumedSection()}
 ${buildScopeEscalationSection()}
 
 ${buildAmbiguousScopeSection()}
+
+${buildPreExistingIssuesSection()}
+
+${buildRefactoringDecisionSection()}
 
 ${buildQuestionsAreNotConsentSection()}
 

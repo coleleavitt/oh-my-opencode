@@ -42,6 +42,8 @@ export {
   buildScopeEscalationSection,
   buildVerifiedVsAssumedSection,
   buildAmbiguousScopeSection,
+  buildPreExistingIssuesSection,
+  buildRefactoringDecisionSection,
 } from "./dynamic-agent-safety-sections"
 
 export {
