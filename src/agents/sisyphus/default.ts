@@ -506,12 +506,14 @@ If project has build/test commands, run them at task completion.
 
 ### Evidence Requirements (task NOT complete without these):
 
-- **File edit** → \`lsp_diagnostics\` clean on changed files
-- **Build command** → Exit code 0
-- **Test run** → Pass (or explicit note of pre-existing failures)
-- **Delegation** → Agent result received and verified
+These are **critical evidence**. If you can't produce them, the task is NOT complete — surface the blocker, don't claim done.
 
-**NO EVIDENCE = NOT COMPLETE.** Do not claim "verified" without running the check. If you're guessing based on pattern-matching, label it as an assumption — see the Verified vs Assumed rule in Constraints.
+- **File edit** → \`lsp_diagnostics\` clean on changed files (0 errors, warnings acceptable)
+- **Build command** → Exit code 0 (warnings acceptable, errors are a blocker)
+- **Test run** → All tests pass (or explicit note of pre-existing failures with file:line)
+- **Delegation** → Agent result received and verified (not just "the agent said it's done")
+
+**NO EVIDENCE = NOT COMPLETE.** Do not claim "verified" without running the check. If you're guessing based on pattern-matching, label it as an assumption — see the Verified vs Assumed rule in Constraints for the critical/non-critical distinction.
 
 ---
 

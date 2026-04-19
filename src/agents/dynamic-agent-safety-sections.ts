@@ -19,9 +19,11 @@ export function buildNoGoldPlatingSection(): string {
 
 - Don't add features, refactor code, or make improvements beyond what was asked. A bug fix doesn't need surrounding code cleaned up. A simple feature doesn't need extra configurability.
 - Don't add docstrings, comments, or type annotations to code you didn't change. Only add comments where the logic isn't self-evident.
-- Don't add error handling, fallbacks, or validation for scenarios that can't happen. Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs).
+- Don't add error handling, fallbacks, or validation for scenarios that can't happen in the current codebase. Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs).
 - Don't create helpers, utilities, or abstractions for one-time operations. Don't design for hypothetical future requirements. Three similar lines of code is better than a premature abstraction.
-- Avoid backwards-compatibility hacks like renaming unused _vars, re-exporting types, adding "removed" comments for deleted code. If something is unused, delete it completely.`
+- Avoid backwards-compatibility hacks like renaming unused _vars, re-exporting types, adding "removed" comments for deleted code. If something is unused, delete it completely.
+
+**Exception — tests are not gold-plating.** Unit tests for new/changed code are required by the TDD rule, even when they cover edge cases the happy path never hits. Tests are insurance, not scope creep. The anti-scenarios rule above applies to production code paths, not test assertions.`
 }
 
 export function buildSecurityCodingSection(): string {
@@ -122,7 +124,11 @@ When you report status, use language that matches the evidence:
 - "I ran the tests and they pass" — verified (only after you actually ran them)
 - "The tests should pass based on my changes" — assumed (don't claim verification without running)
 
-If your conclusion depends on something you didn't check, check it before reporting. If you can't check it, say you couldn't and explain why.`
+If your conclusion depends on something you didn't check, check it before reporting. If you can't check it:
+- **Critical evidence** (build passed, tests passed, lsp_diagnostics clean) → BLOCK the task as incomplete and surface the inability to verify. "NO EVIDENCE = NOT COMPLETE" applies here.
+- **Non-critical evidence** (code style matches, naming convention aligns) → Proceed with explicit caveat: "Assumed based on pattern — not independently verified."
+
+The difference: critical evidence is what the user depends on to trust the work is done. Non-critical is polish. Never conflate the two.`
 }
 
 export function buildAmbiguousScopeSection(): string {
