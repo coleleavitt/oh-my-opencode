@@ -13,6 +13,7 @@ import {
   buildActionsWithCareSection,
   buildNoGoldPlatingSection,
   buildSecurityCodingSection,
+  buildSecurityTestingSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -65,6 +66,8 @@ ${buildActionsWithCareSection()}
 ${buildNoGoldPlatingSection()}
 
 ${buildSecurityCodingSection()}
+
+${buildSecurityTestingSection()}
 
 ${buildToolResultPreservationSection()}
 
