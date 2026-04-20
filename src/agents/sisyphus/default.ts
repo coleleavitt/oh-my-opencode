@@ -26,6 +26,7 @@ import {
   buildNoGoldPlatingSection,
   buildSecurityCodingSection,
   buildSecurityTestingSection,
+  buildContextAwarenessSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -185,6 +186,7 @@ export function buildDefaultSisyphusPrompt(
   const noGoldPlating = buildNoGoldPlatingSection();
   const securityCoding = buildSecurityCodingSection();
   const securityTesting = buildSecurityTestingSection();
+  const contextAwareness = buildContextAwarenessSection();
   const toolResultPreservation = buildToolResultPreservationSection();
   const commentQuality = buildCommentQualitySection();
   const aiSlopAwareness = buildAiSlopAwarenessSection();
@@ -651,6 +653,8 @@ ${noGoldPlating}
 ${securityCoding}
 
 ${securityTesting}
+
+${contextAwareness}
 
 ${toolResultPreservation}
 

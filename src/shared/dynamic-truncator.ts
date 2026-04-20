@@ -145,10 +145,10 @@ export async function getContextWindowUsage(
 
 		if (!actualLimit) return null;
 
+		// Matches v114 NV$() at 112913: output_tokens excluded (not part of context footprint)
 		const usedTokens =
 			(lastTokens?.input ?? 0) +
-			(lastTokens?.cache?.read ?? 0) +
-			(lastTokens?.output ?? 0);
+			(lastTokens?.cache?.read ?? 0);
 		const remainingTokens = actualLimit - usedTokens;
 
 		return {

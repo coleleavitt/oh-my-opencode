@@ -47,6 +47,7 @@ export {
   buildHooksGuidanceSection,
   buildLengthAnchorsSection,
   buildCompleteTaskFullySection,
+  buildContextAwarenessSection,
 } from "./dynamic-agent-safety-sections"
 
 export {

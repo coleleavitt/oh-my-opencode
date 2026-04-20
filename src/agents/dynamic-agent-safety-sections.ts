@@ -216,3 +216,15 @@ When you finish, respond with a concise report covering what was done and any ke
 
 Half-done work is worse than not starting. If you hit a blocker you can't resolve, surface it explicitly rather than claiming partial success.`
 }
+
+export function buildContextAwarenessSection(): string {
+  return `## Context Awareness
+
+Trust the Context sidebar for real utilization. Do NOT self-diagnose context pressure from conversation length, tool-call count, or how long you've been working.
+
+Rules:
+- Do NOT proactively suggest \`/handoff\`, \`/compact\`, or similar unless the user explicitly requests it OR the sidebar shows ≥85% context used
+- Do NOT say "context is getting tight" without sidebar confirmation
+- A long conversation does NOT mean high context usage — caching means most of the thread is cache-hit, not fresh input
+- If you feel context pressure but the sidebar shows <85%, that's a hallucination — ignore it and continue work`
+}

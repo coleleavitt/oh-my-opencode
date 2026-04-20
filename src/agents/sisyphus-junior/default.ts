@@ -14,6 +14,7 @@ import {
   buildNoGoldPlatingSection,
   buildSecurityCodingSection,
   buildSecurityTestingSection,
+  buildContextAwarenessSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -68,6 +69,8 @@ ${buildNoGoldPlatingSection()}
 ${buildSecurityCodingSection()}
 
 ${buildSecurityTestingSection()}
+
+${buildContextAwarenessSection()}
 
 ${buildToolResultPreservationSection()}
 

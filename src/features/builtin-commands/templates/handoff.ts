@@ -2,12 +2,21 @@ export const HANDOFF_TEMPLATE = `# Handoff Command
 
 ## Purpose
 
-Use /handoff when:
-- The current session context is getting too long and quality is degrading
-- You want to start fresh while preserving essential context from this session
-- The context window is approaching capacity
+## When to Use
 
-This creates a detailed context summary that can be used to continue work in a new session.
+ONLY invoke /handoff when:
+1. The user EXPLICITLY requests a handoff, OR
+2. The Context sidebar shows ≥85% used (verifiable real data)
+
+DO NOT self-diagnose context pressure from:
+- Conversation length in messages
+- Number of tool calls made
+- How long you've been working
+- Task count remaining in a plan
+
+The sidebar is the single source of truth. Below 85%, do not propose
+handoff, do not mention "context is tight", do not save state
+prematurely. Continue work.
 
 ---
 

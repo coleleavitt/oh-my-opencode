@@ -8,6 +8,9 @@ import { attemptDeduplicationRecovery } from "./deduplication-recovery"
 import { clearSessionState } from "./state"
 import { clearAllSessionTimeouts, clearSessionTimeout } from "./session-timeout-map"
 import { log } from "../../shared/logger"
+import { classifyOverflow, shouldEmitToast } from "./smart-overflow-toast"
+
+const overflowToastState = new Map<string, number>()
 
 export interface AnthropicContextWindowLimitRecoveryOptions {
   experimental?: ExperimentalConfig
@@ -86,6 +89,23 @@ export function createAnthropicContextWindowLimitRecoveryHook(
         const lastAssistantInfo = lastAssistant?.info
         const providerID = parsed.providerID ?? (lastAssistantInfo?.providerID as string | undefined)
         const modelID = parsed.modelID ?? (lastAssistantInfo?.modelID as string | undefined)
+
+        const classification = classifyOverflow({ currentTokens: parsed.currentTokens, maxTokens: parsed.maxTokens })
+        if (classification.kind === "200k-overflow") {
+          if (shouldEmitToast(overflowToastState, providerID ?? "anthropic", modelID ?? "unknown")) {
+            dependencies.log(`[overflow-toast] ${classification.kind}: ${classification.message}`)
+            await ctx.client.tui
+              .showToast({
+                body: {
+                  title: "200K Context Overflow",
+                  message: classification.message,
+                  variant: "warning" as const,
+                  duration: 8000,
+                },
+              })
+              .catch(() => {})
+          }
+        }
 
         await ctx.client.tui
           .showToast({
