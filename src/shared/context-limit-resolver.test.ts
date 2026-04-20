@@ -6,6 +6,10 @@ import { resolveActualContextLimit } from "./context-limit-resolver"
 const ANTHROPIC_CONTEXT_ENV_KEY = "ANTHROPIC_1M_CONTEXT"
 const VERTEX_CONTEXT_ENV_KEY = "VERTEX_ANTHROPIC_1M_CONTEXT"
 
+// Test hermeticity: skip reading real ~/.config/opencode/anthropic-accounts.json
+// which may contain accounts with context1m=true on developer machines.
+process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
+
 const originalAnthropicContextEnv = process.env[ANTHROPIC_CONTEXT_ENV_KEY]
 const originalVertexContextEnv = process.env[VERTEX_CONTEXT_ENV_KEY]
 
@@ -156,6 +160,57 @@ describe("resolveActualContextLimit", () => {
 
     // then
     expect(actualLimit).toBe(200_000)
+  })
+
+  it("returns cached limit for Anthropic opus-4-7 models when 1M mode is disabled (GA support)", () => {
+    // given
+    delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
+    delete process.env[VERTEX_CONTEXT_ENV_KEY]
+    const modelContextLimitsCache = new Map<string, number>()
+    modelContextLimitsCache.set("anthropic/claude-opus-4-7", 1_000_000)
+
+    // when
+    const actualLimit = resolveActualContextLimit("anthropic", "claude-opus-4-7", {
+      anthropicContext1MEnabled: false,
+      modelContextLimitsCache,
+    })
+
+    // then
+    expect(actualLimit).toBe(1_000_000)
+  })
+
+  it("returns cached limit for Anthropic opus-4.7 dot-version model IDs", () => {
+    // given
+    delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
+    delete process.env[VERTEX_CONTEXT_ENV_KEY]
+    const modelContextLimitsCache = new Map<string, number>()
+    modelContextLimitsCache.set("anthropic/claude-opus-4.7", 1_000_000)
+
+    // when
+    const actualLimit = resolveActualContextLimit("anthropic", "claude-opus-4.7", {
+      anthropicContext1MEnabled: false,
+      modelContextLimitsCache,
+    })
+
+    // then
+    expect(actualLimit).toBe(1_000_000)
+  })
+
+  it("returns cached limit for sonnet-4 base model without version suffix", () => {
+    // given
+    delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
+    delete process.env[VERTEX_CONTEXT_ENV_KEY]
+    const modelContextLimitsCache = new Map<string, number>()
+    modelContextLimitsCache.set("anthropic/claude-sonnet-4-6", 1_000_000)
+
+    // when
+    const actualLimit = resolveActualContextLimit("anthropic", "claude-sonnet-4-6", {
+      anthropicContext1MEnabled: false,
+      modelContextLimitsCache,
+    })
+
+    // then
+    expect(actualLimit).toBe(1_000_000)
   })
 
   it("returns null for non-Anthropic providers without a cached limit", () => {
