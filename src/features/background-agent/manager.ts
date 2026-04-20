@@ -1883,11 +1883,29 @@ export class BackgroundManager {
           })
         } catch (error) {
           if (isAbortedSessionError(error)) {
-            log("[background-agent] Parent session aborted while sending notification; continuing cleanup:", {
+            log("[background-agent] Parent session busy, retrying notification in 3s:", {
               taskId: task.id,
               parentSessionID: task.parentSessionID,
             })
-            this.queuePendingNotification(task.parentSessionID, notification)
+            setTimeout(async () => {
+              try {
+                await this.client.session.promptAsync({
+                  path: { id: task.parentSessionID },
+                  body: {
+                    noReply: !shouldReply,
+                    ...(agent !== undefined ? { agent } : {}),
+                    ...(model !== undefined ? { model } : {}),
+                    ...(variant !== undefined ? { variant } : {}),
+                    ...(resolvedTools ? { tools: resolvedTools } : {}),
+                    parts: [createInternalAgentTextPart(notification)],
+                  },
+                })
+                log("[background-agent] Retry notification succeeded:", { taskId: task.id })
+              } catch (retryError) {
+                log("[background-agent] Retry notification also failed, queuing as fallback:", { taskId: task.id })
+                this.queuePendingNotification(task.parentSessionID, notification)
+              }
+            }, 3000)
           } else {
             log("[background-agent] Failed to send notification:", error)
           }
