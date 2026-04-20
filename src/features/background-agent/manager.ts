@@ -1377,6 +1377,14 @@ export class BackgroundManager {
     this.pendingNotifications.set(sessionID, existingNotifications)
   }
 
+  // Drains queue into atlas continuation prompt to break the idle→notification deadlock
+  drainPendingNotifications(sessionID: string): string {
+    const notifications = this.pendingNotifications.get(sessionID)
+    if (!notifications || notifications.length === 0) return ""
+    this.pendingNotifications.delete(sessionID)
+    return notifications.join("\n\n")
+  }
+
   injectPendingNotificationsIntoChatMessage(output: { parts: Array<{ type: string; text?: string; [key: string]: unknown }> }, sessionID: string): void {
     const pendingNotifications = this.pendingNotifications.get(sessionID)
     if (!pendingNotifications || pendingNotifications.length === 0) {

@@ -13,8 +13,6 @@ export function isSessionSettled(args: {
       return false
     }
   }
-  const pendingNotifs = args.pendingNotifications.get(args.sessionID)
-  if (pendingNotifs && pendingNotifs.length > 0) return false
   if (args.notificationQueueByParent.has(args.sessionID)) return false
   return true
 }

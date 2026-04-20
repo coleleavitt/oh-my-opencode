@@ -1310,6 +1310,43 @@ describe("BackgroundManager.injectPendingNotificationsIntoChatMessage", () => {
   })
 })
 
+describe("BackgroundManager.drainPendingNotifications", () => {
+  test("#given 3 queued notifications #when draining #then returns joined string and clears queue", () => {
+    //#given
+    const manager = createBackgroundManager()
+    manager.queuePendingNotification("s1", "<system-reminder>notif-1</system-reminder>")
+    manager.queuePendingNotification("s1", "<system-reminder>notif-2</system-reminder>")
+    manager.queuePendingNotification("s1", "<system-reminder>notif-3</system-reminder>")
+
+    //#when
+    const result = manager.drainPendingNotifications("s1")
+
+    //#then
+    expect(result).toContain("<system-reminder>notif-1</system-reminder>")
+    expect(result).toContain("<system-reminder>notif-2</system-reminder>")
+    expect(result).toContain("<system-reminder>notif-3</system-reminder>")
+    expect(result).toBe(
+      "<system-reminder>notif-1</system-reminder>\n\n<system-reminder>notif-2</system-reminder>\n\n<system-reminder>notif-3</system-reminder>"
+    )
+    expect(getPendingNotifications(manager).has("s1")).toBe(false)
+
+    manager.shutdown()
+  })
+
+  test("#given no queued notifications #when draining #then returns empty string", () => {
+    //#given
+    const manager = createBackgroundManager()
+
+    //#when
+    const result = manager.drainPendingNotifications("s1")
+
+    //#then
+    expect(result).toBe("")
+
+    manager.shutdown()
+  })
+})
+
 function buildNotificationPromptBody(
   task: BackgroundTask,
   currentMessage: CurrentMessage | null

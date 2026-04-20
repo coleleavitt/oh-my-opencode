@@ -132,6 +132,7 @@ describe("atlas background task retry", () => {
       directory: testDir,
       backgroundManager: {
         getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
+        isSessionSettled: () => !backgroundRunning,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -173,6 +174,7 @@ describe("atlas background task retry", () => {
       directory: testDir,
       backgroundManager: {
         getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
+        isSessionSettled: () => !backgroundRunning,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -203,6 +205,7 @@ describe("atlas background task retry", () => {
     })
 
     let remainingRunningRetries = 2
+    const isRunning = () => remainingRunningRetries > 0
     const promptMock = mock(async () => ({}))
     const hook = createAtlasHook({
       directory: testDir,
@@ -223,6 +226,7 @@ describe("atlas background task retry", () => {
 
           return []
         },
+        isSessionSettled: () => !isRunning(),
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -281,6 +285,7 @@ describe("atlas background task retry", () => {
 
           return []
         },
+        isSessionSettled: () => true,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -325,6 +330,7 @@ describe("atlas background task retry", () => {
       directory: testDir,
       backgroundManager: {
         getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
+        isSessionSettled: () => !backgroundRunning,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -393,6 +399,7 @@ describe("atlas background task retry", () => {
           }
           return backgroundRunning ? [{ status: "running" }] : []
         },
+        isSessionSettled: () => !backgroundRunning,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -473,6 +480,7 @@ describe("atlas background task retry", () => {
       directory: testDir,
       backgroundManager: {
         getTasksByParentSession: () => [],
+        isSessionSettled: () => true,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
@@ -526,6 +534,7 @@ describe("atlas background task retry", () => {
       directory: testDir,
       backgroundManager: {
         getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
+        isSessionSettled: () => !backgroundRunning,
       } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"] & {
         getTasksByParentSession: (sessionID: string) => Array<{ status: string }>
       },
