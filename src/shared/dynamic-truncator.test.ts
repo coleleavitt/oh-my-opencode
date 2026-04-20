@@ -7,6 +7,9 @@ import { getContextWindowUsage } from "./dynamic-truncator"
 const ANTHROPIC_CONTEXT_ENV_KEY = "ANTHROPIC_1M_CONTEXT"
 const VERTEX_CONTEXT_ENV_KEY = "VERTEX_ANTHROPIC_1M_CONTEXT"
 
+// Test hermeticity: skip reading real ~/.config/opencode/anthropic-accounts.json
+process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
+
 const originalAnthropicContextEnv = process.env[ANTHROPIC_CONTEXT_ENV_KEY]
 const originalVertexContextEnv = process.env[VERTEX_CONTEXT_ENV_KEY]
 
