@@ -73,11 +73,6 @@ export async function injectBoulderContinuation(input: {
 	try {
 		log(`[${HOOK_NAME}] Injecting boulder continuation`, { sessionID, planName, remaining })
 
-    const drainedNotifications = backgroundManager?.drainPendingNotifications(sessionID) ?? ""
-    const continuationText = drainedNotifications
-      ? `${drainedNotifications}\n\n---\n\n${prompt}`
-      : prompt
-
     const promptContext = await resolveRecentPromptContextForSession(ctx, sessionID)
     const inheritedTools = resolveInheritedPromptTools(sessionID, promptContext.tools)
 
@@ -93,7 +88,7 @@ export async function injectBoulderContinuation(input: {
         ...(launchModel ? { model: launchModel } : {}),
         ...(launchVariant ? { variant: launchVariant } : {}),
         ...(inheritedTools ? { tools: inheritedTools } : {}),
-        parts: [createInternalAgentTextPart(continuationText)],
+        parts: [createInternalAgentTextPart(prompt)],
       },
       query: { directory: ctx.directory },
     })

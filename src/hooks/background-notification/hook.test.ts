@@ -9,6 +9,7 @@ describe("createBackgroundNotificationHook", () => {
     const hook = createBackgroundNotificationHook({
       handleEvent,
       injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications: mock(async () => {}),
     } as never)
 
     //#when
@@ -24,6 +25,7 @@ describe("createBackgroundNotificationHook", () => {
     const hook = createBackgroundNotificationHook({
       handleEvent,
       injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications: mock(async () => {}),
     } as never)
 
     const event = { type: "message.part.delta", properties: { sessionID: "ses-1", field: "text", delta: "x" } }
@@ -41,6 +43,7 @@ describe("createBackgroundNotificationHook", () => {
     const hook = createBackgroundNotificationHook({
       handleEvent,
       injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications: mock(async () => {}),
     } as never)
 
     const event = {
@@ -56,5 +59,65 @@ describe("createBackgroundNotificationHook", () => {
 
     //#then
     expect(handleEvent).toHaveBeenCalledWith(event)
+  })
+
+  test("#given session.idle event #when event handler runs #then it calls flushPendingNotifications", async () => {
+    //#given
+    const handleEvent = mock(() => {})
+    const flushPendingNotifications = mock(async () => {})
+    const hook = createBackgroundNotificationHook({
+      handleEvent,
+      injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications,
+    } as never)
+
+    const event = { type: "session.idle", properties: { sessionID: "ses-idle-1" } }
+
+    //#when
+    await hook.event({ event })
+
+    //#then
+    expect(handleEvent).toHaveBeenCalledWith(event)
+    expect(flushPendingNotifications).toHaveBeenCalledWith("ses-idle-1")
+  })
+
+  test("#given session.idle event without sessionID #when event handler runs #then it does not call flush", async () => {
+    //#given
+    const handleEvent = mock(() => {})
+    const flushPendingNotifications = mock(async () => {})
+    const hook = createBackgroundNotificationHook({
+      handleEvent,
+      injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications,
+    } as never)
+
+    const event = { type: "session.idle", properties: {} }
+
+    //#when
+    await hook.event({ event })
+
+    //#then
+    expect(handleEvent).toHaveBeenCalledWith(event)
+    expect(flushPendingNotifications).not.toHaveBeenCalled()
+  })
+
+  test("#given non-idle event #when event handler runs #then it does not call flush", async () => {
+    //#given
+    const handleEvent = mock(() => {})
+    const flushPendingNotifications = mock(async () => {})
+    const hook = createBackgroundNotificationHook({
+      handleEvent,
+      injectPendingNotificationsIntoChatMessage: () => {},
+      flushPendingNotifications,
+    } as never)
+
+    const event = { type: "message.updated", properties: { sessionID: "ses-1" } }
+
+    //#when
+    await hook.event({ event })
+
+    //#then
+    expect(handleEvent).toHaveBeenCalledWith(event)
+    expect(flushPendingNotifications).not.toHaveBeenCalled()
   })
 })

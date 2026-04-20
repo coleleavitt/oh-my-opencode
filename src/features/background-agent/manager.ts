@@ -161,6 +161,7 @@ export class BackgroundManager {
   private completedTaskSummaries: Map<string, BackgroundTaskNotificationTask[]> = new Map()
   private idleDeferralTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private notificationQueueByParent: Map<string, Promise<void>> = new Map()
+  private draining = new Map<string, Promise<void>>()
   private observedOutputSessions: Set<string> = new Set()
   private observedIncompleteTodosBySession: Map<string, boolean> = new Map()
   private rootDescendantCounts: Map<string, number>
@@ -1385,6 +1386,68 @@ export class BackgroundManager {
     return notifications.join("\n\n")
   }
 
+  public async flushPendingNotifications(sessionID: string): Promise<void> {
+    const existing = this.draining.get(sessionID)
+    if (existing) {
+      await existing
+      return
+    }
+    const drainPromise = this.executeDrain(sessionID)
+    this.draining.set(sessionID, drainPromise)
+    try {
+      await drainPromise
+    } finally {
+      this.draining.delete(sessionID)
+    }
+  }
+
+  private async executeDrain(sessionID: string): Promise<void> {
+    const queued = this.pendingNotifications.get(sessionID)
+    if (!queued || queued.length === 0) return
+
+    const batch = queued.slice()
+    this.pendingNotifications.delete(sessionID)
+
+    const batchedText = batch.join("\n\n---\n\n")
+
+    try {
+      await this.client.session.promptAsync({
+        path: { id: sessionID },
+        body: {
+          noReply: false,
+          parts: [createInternalAgentTextPart(batchedText)],
+        },
+      })
+      log("[background-agent] Flushed pending notifications to parent session:", {
+        sessionID,
+        count: batch.length,
+      })
+    } catch (error) {
+      if (isAbortedSessionError(error)) {
+        log("[background-agent] Session busy during drain, re-queuing for next idle:", {
+          sessionID,
+          count: batch.length,
+        })
+        const current = this.pendingNotifications.get(sessionID) ?? []
+        this.pendingNotifications.set(sessionID, [...batch, ...current])
+      } else if (this.isSessionDeletedError(error)) {
+        log("[background-agent] Parent session deleted, discarding pending notifications:", {
+          sessionID,
+          count: batch.length,
+        })
+      } else {
+        log("[background-agent] Unexpected error during notification drain:", { sessionID, error })
+        const current = this.pendingNotifications.get(sessionID) ?? []
+        this.pendingNotifications.set(sessionID, [...batch, ...current])
+      }
+    }
+  }
+
+  private isSessionDeletedError(error: unknown): boolean {
+    const msg = error instanceof Error ? error.message : String(error)
+    return /session.*not found|session.*deleted|not exist/i.test(msg)
+  }
+
   injectPendingNotificationsIntoChatMessage(output: { parts: Array<{ type: string; text?: string; [key: string]: unknown }> }, sessionID: string): void {
     const pendingNotifications = this.pendingNotifications.get(sessionID)
     if (!pendingNotifications || pendingNotifications.length === 0) {
@@ -1883,29 +1946,11 @@ export class BackgroundManager {
           })
         } catch (error) {
           if (isAbortedSessionError(error)) {
-            log("[background-agent] Parent session busy, retrying notification in 3s:", {
+            log("[background-agent] Parent session busy, queuing notification for idle drain:", {
               taskId: task.id,
               parentSessionID: task.parentSessionID,
             })
-            setTimeout(async () => {
-              try {
-                await this.client.session.promptAsync({
-                  path: { id: task.parentSessionID },
-                  body: {
-                    noReply: !shouldReply,
-                    ...(agent !== undefined ? { agent } : {}),
-                    ...(model !== undefined ? { model } : {}),
-                    ...(variant !== undefined ? { variant } : {}),
-                    ...(resolvedTools ? { tools: resolvedTools } : {}),
-                    parts: [createInternalAgentTextPart(notification)],
-                  },
-                })
-                log("[background-agent] Retry notification succeeded:", { taskId: task.id })
-              } catch (retryError) {
-                log("[background-agent] Retry notification also failed, queuing as fallback:", { taskId: task.id })
-                this.queuePendingNotification(task.parentSessionID, notification)
-              }
-            }, 3000)
+            this.queuePendingNotification(task.parentSessionID, notification)
           } else {
             log("[background-agent] Failed to send notification:", error)
           }
@@ -2215,6 +2260,7 @@ export class BackgroundManager {
     this.pendingNotifications.clear()
     this.pendingByParent.clear()
     this.notificationQueueByParent.clear()
+    this.draining.clear()
     this.rootDescendantCounts.clear()
     this.queuesByKey.clear()
     this.processingKeys.clear()

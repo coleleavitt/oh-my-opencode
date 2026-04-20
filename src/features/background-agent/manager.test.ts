@@ -1347,6 +1347,152 @@ describe("BackgroundManager.drainPendingNotifications", () => {
   })
 })
 
+describe("BackgroundManager.flushPendingNotifications", () => {
+  test("#given multiple queued notifications #when flushing #then batches into one promptAsync call", async () => {
+    //#given
+    const promptCalls: Array<{ path: { id: string }; body: Record<string, unknown> }> = []
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async (args: { path: { id: string }; body: Record<string, unknown> }) => {
+          promptCalls.push(args)
+          return {}
+        },
+        abort: async () => ({}),
+        messages: async () => ({ data: [] }),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif-1</system-reminder>")
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif-2</system-reminder>")
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif-3</system-reminder>")
+
+    //#when
+    await manager.flushPendingNotifications("ses-1")
+
+    //#then
+    expect(promptCalls).toHaveLength(1)
+    expect(promptCalls[0].path.id).toBe("ses-1")
+    const bodyParts = promptCalls[0].body.parts as Array<{ text?: string }>
+    expect(bodyParts[0].text).toContain("notif-1")
+    expect(bodyParts[0].text).toContain("notif-2")
+    expect(bodyParts[0].text).toContain("notif-3")
+    expect(getPendingNotifications(manager).has("ses-1")).toBe(false)
+
+    manager.shutdown()
+  })
+
+  test("#given promptAsync aborts #when flushing #then re-queues for next drain", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => {
+          const error = new Error("Request aborted")
+          error.name = "MessageAbortedError"
+          throw error
+        },
+        abort: async () => ({}),
+        messages: async () => ({ data: [] }),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif-a</system-reminder>")
+
+    //#when
+    await manager.flushPendingNotifications("ses-1")
+
+    //#then
+    const requeued = getPendingNotifications(manager).get("ses-1")
+    expect(requeued).toHaveLength(1)
+    expect(requeued![0]).toContain("notif-a")
+
+    manager.shutdown()
+  })
+
+  test("#given session deleted error #when flushing #then discards notifications", async () => {
+    //#given
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => {
+          throw new Error("Session not found")
+        },
+        abort: async () => ({}),
+        messages: async () => ({ data: [] }),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif-discard</system-reminder>")
+
+    //#when
+    await manager.flushPendingNotifications("ses-1")
+
+    //#then
+    expect(getPendingNotifications(manager).has("ses-1")).toBe(false)
+
+    manager.shutdown()
+  })
+
+  test("#given no queued notifications #when flushing #then does nothing", async () => {
+    //#given
+    const promptCalls: unknown[] = []
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async (args: unknown) => {
+          promptCalls.push(args)
+          return {}
+        },
+        abort: async () => ({}),
+        messages: async () => ({ data: [] }),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+
+    //#when
+    await manager.flushPendingNotifications("ses-1")
+
+    //#then
+    expect(promptCalls).toHaveLength(0)
+
+    manager.shutdown()
+  })
+
+  test("#given concurrent flush calls #when flushing #then only one drain executes", async () => {
+    //#given
+    let promptCallCount = 0
+    let resolvePrompt: (() => void) | undefined
+    const client = {
+      session: {
+        prompt: async () => ({}),
+        promptAsync: async () => {
+          promptCallCount++
+          if (promptCallCount === 1) {
+            await new Promise<void>((resolve) => { resolvePrompt = resolve })
+          }
+          return {}
+        },
+        abort: async () => ({}),
+        messages: async () => ({ data: [] }),
+      },
+    }
+    const manager = new BackgroundManager({ client, directory: tmpdir() } as unknown as PluginInput)
+    manager.queuePendingNotification("ses-1", "<system-reminder>notif</system-reminder>")
+
+    //#when
+    const flush1 = manager.flushPendingNotifications("ses-1")
+    const flush2 = manager.flushPendingNotifications("ses-1")
+    resolvePrompt?.()
+    await Promise.all([flush1, flush2])
+
+    //#then
+    expect(promptCallCount).toBe(1)
+
+    manager.shutdown()
+  })
+})
+
 function buildNotificationPromptBody(
   task: BackgroundTask,
   currentMessage: CurrentMessage | null

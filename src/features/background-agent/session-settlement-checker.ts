@@ -14,5 +14,10 @@ export function isSessionSettled(args: {
     }
   }
   if (args.notificationQueueByParent.has(args.sessionID)) return false
+
+  // Pending notifications? Not settled — idle drain will flush them first.
+  const pending = args.pendingNotifications.get(args.sessionID)
+  if (pending && pending.length > 0) return false
+
   return true
 }
