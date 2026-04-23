@@ -205,7 +205,10 @@ export function buildDefaultSisyphusPrompt(
   const sharedInfraBias = buildSharedInfraBiasSection();
   const preemptiveBlock = buildPreemptiveBlockSection();
   const unseenToolResults = buildUnseenToolResultsSection();
-  const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
+  const parallelDelegationSection = buildParallelDelegationSection(
+    model,
+    availableCategories,
+  );
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
   const todoHookNote = useTaskSystem
@@ -560,17 +563,24 @@ A task is complete when:
 
 After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
 
-1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
-2. **Fix ALL P0 (critical), P1 (high), and P2 (medium) findings.** P3 (low) — fix if quick, otherwise note and skip.
-3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
-4. **Repeat** until zero P0, P1, and P2 findings.
+1. **Delegate review**: \`task(subagent_type="code-reviewer", run_in_background=false, load_skills=["argus-review"], description="Review changes", prompt="Review all uncommitted changes for P-1 through P-4 issues using the 5-axis rubric (Impact × Trigger × Blast Radius × Fix Effort × Confidence). Focus on bugs introduced by recent edits.")\` (\`argus\` is available as an alias for the same agent.)
+   - **Available review skills** (pass one in \`load_skills\` to tune the pass):
+     - \`argus-review\` — default uncommitted-diff bug pass (use this when unsure)
+     - \`argus-pr\` — branch-vs-base PR review with APPROVE/REQUEST CHANGES/NEEDS DISCUSSION verdict
+     - \`argus-commit\` — single-commit review with commit-quality pre-check (takes \`<commit-hash>\`, defaults to HEAD)
+     - \`argus-security\` — security-focused audit (auto-promotes security findings to P-1, HIGH confidence only)
+     - \`argus-custom\` — user-supplied review instructions (takes \`<custom review instructions>\`)
+     - \`argus-plan\` — read-only planning/analysis mode (NOT a bug review — use for "how would I approach X?")
+2. **Fix ALL P-1 (blocker), P-2 (high), and P-3 (medium) findings.** P-4 (low) — fix if quick, otherwise note and skip.
+3. **Re-review** after fixes — delegate to code-reviewer again (same \`load_skills\`) to confirm fixes are clean.
+4. **Repeat** until zero P-1, P-2, and P-3 findings.
 
 **Skip the review loop ONLY when:**
 - Changes are trivial (typo fix, config tweak, single-line change)
 - User explicitly says not to review
 - Changes are documentation-only
 
-**Update todos during the loop**: Add a "Review: delegate to cubic-reviewer and fix findings" todo item and track it.
+**Update todos during the loop**: Add a "Review: delegate to code-reviewer (Argus) and fix findings" todo item and track it.
 
 If verification or review fails:
 1. Fix issues caused by your changes

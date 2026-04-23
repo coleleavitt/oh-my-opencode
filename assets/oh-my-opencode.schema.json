@@ -60,7 +60,8 @@
           "refactor",
           "start-work",
           "stop-continuation",
-          "remove-ai-slops"
+          "remove-ai-slops",
+          "security-review"
         ]
       }
     },
@@ -68,6 +69,13 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "agent_definitions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
       }
     },
     "mcp_env_allowlist": {
@@ -5257,6 +5265,13 @@
           "additionalProperties": {
             "type": "boolean"
           }
+        },
+        "md_excludes": {
+          "description": "Glob patterns to exclude specific AGENTS.md/CLAUDE.md/README.md files from auto-loading",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
@@ -5446,6 +5461,9 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
+        },
+        "fork_agent_enabled": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -5902,6 +5920,142 @@
       ],
       "additionalProperties": false
     },
+    "argus_auto_review": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "hybrid",
+          "type": "string",
+          "enum": [
+            "pre-commit",
+            "n-edits",
+            "post-tool-use",
+            "hybrid"
+          ]
+        },
+        "edit_threshold": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "cooldown_ms": {
+          "default": 900000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "block_on_p_levels": {
+          "default": [
+            "P-1",
+            "P-2",
+            "P-3",
+            "P-4"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "P-1",
+              "P-2",
+              "P-3",
+              "P-4"
+            ]
+          }
+        },
+        "confidence_threshold": {
+          "default": "high",
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "certain"
+          ]
+        },
+        "skill": {
+          "default": "argus-review",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 180000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "auto_verify_after_n_tasks": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "enabled",
+        "mode",
+        "edit_threshold",
+        "cooldown_ms",
+        "block_on_p_levels",
+        "confidence_threshold",
+        "skill",
+        "timeout_ms",
+        "auto_verify_after_n_tasks"
+      ],
+      "additionalProperties": false
+    },
+    "auto_memory": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "auto_dream": {
+          "default": {
+            "enabled": false,
+            "consolidation_threshold": 10,
+            "max_memory_chars": 50000
+          },
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "default": false,
+              "type": "boolean"
+            },
+            "consolidation_threshold": {
+              "default": 10,
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "max_memory_chars": {
+              "default": 50000,
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "enabled",
+            "consolidation_threshold",
+            "max_memory_chars"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "enabled",
+        "auto_dream"
+      ],
+      "additionalProperties": false
+    },
     "git_master": {
       "default": {
         "commit_footer": true,
@@ -6058,6 +6212,135 @@
       },
       "required": [
         "auto_commit"
+      ],
+      "additionalProperties": false
+    },
+    "permission_automation": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "rules": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool_pattern": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Glob pattern matching tool name, e.g., 'bash', 'edit', 'write', or 'grep_app_*'"
+              },
+              "command_pattern": {
+                "description": "Optional sub-pattern for bash commands, e.g., 'npm *', 'git status*'",
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "ask"
+                ]
+              }
+            },
+            "required": [
+              "tool_pattern",
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "log_decisions": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "rules",
+        "log_decisions"
+      ],
+      "additionalProperties": false
+    },
+    "status_line": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "type": {
+          "default": "command",
+          "type": "string",
+          "const": "command"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "padding": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "output_file": {
+          "type": "string"
+        },
+        "timeout_ms": {
+          "default": 5000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "enabled",
+        "type",
+        "timeout_ms"
+      ],
+      "additionalProperties": false
+    },
+    "file_changed": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "initial_paths": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "debounce_ms": {
+          "default": 100,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "enabled",
+        "initial_paths",
+        "debounce_ms"
+      ],
+      "additionalProperties": false
+    },
+    "cwd_changed": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
       ],
       "additionalProperties": false
     },

@@ -61,6 +61,8 @@ export function createToolExecuteBeforeHandler(args: {
       }
     }
 
+    await hooks.permissionRequest?.["tool.execute.before"]?.(input, output)
+    await hooks.argusAutoReview?.["tool.execute.before"]?.(input, output)
     await hooks.writeExistingFileGuard?.["tool.execute.before"]?.(input, output)
     await hooks.questionLabelTruncator?.["tool.execute.before"]?.(input, output)
     await hooks.claudeCodeHooks?.["tool.execute.before"]?.(input, output)
@@ -75,6 +77,7 @@ export function createToolExecuteBeforeHandler(args: {
     await hooks.prometheusMdOnly?.["tool.execute.before"]?.(input, output)
     await hooks.sisyphusJuniorNotepad?.["tool.execute.before"]?.(input, output)
     await hooks.atlasHook?.["tool.execute.before"]?.(input, output)
+    await hooks.cwdChanged?.["tool.execute.before"]?.(input, output)
 
     const normalizedToolName = input.tool.toLowerCase()
     if (

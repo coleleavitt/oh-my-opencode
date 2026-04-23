@@ -78,6 +78,8 @@ export { SessionCategoryRegistry } from "./session-category-registry";
 export * from "./plugin-identity";
 export * from "./log-legacy-plugin-startup-warning";
 export * from "./task-system-enabled";
+export * from "./parse-tools-config";
+export * from "./resolve-agent-definition-paths";
 export {
   latch as cacheLatch,
   clear as clearCacheLatch,

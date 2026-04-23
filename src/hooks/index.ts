@@ -103,3 +103,11 @@ export {
   type AwaySummaryOptions,
 } from "./away-summary";
 export { createMemoryInjectionHook } from "./memory-injection";
+export { createArgusAutoReviewHook } from "./argus-auto-review";
+export { createPermissionRequestHook } from "./permission-request";
+export { createPermissionDeniedHook } from "./permission-denied";
+export { createSessionEndHook } from "./session-end";
+export { createStatusLineHook } from "./status-line";
+export { createAutoMemoryHook } from "./auto-memory";
+export { createFileChangedHook } from "./file-changed";
+export { createCwdChangedHook } from "./cwd-changed";

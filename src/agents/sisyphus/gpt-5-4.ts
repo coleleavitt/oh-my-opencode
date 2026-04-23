@@ -358,9 +358,10 @@ Every implementation task follows this cycle. No exceptions.
 
    <review_loop>
    BEFORE exiting, run the review loop (MANDATORY for non-trivial changes):
-   a. Delegate: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
-   b. Fix ALL P0 (critical), P1 (high), and P2 (medium) findings. P3 — fix if quick, note otherwise.
-   c. Re-review after fixes. Repeat until zero P0/P1/P2.
+   a. Delegate: \`task(subagent_type="code-reviewer", run_in_background=false, load_skills=["argus-review"], description="Review changes", prompt="Review all uncommitted changes for P-1 through P-4 issues using the 5-axis rubric (Impact × Trigger × Blast Radius × Fix Effort × Confidence). Focus on bugs introduced by recent edits.")\` (\`argus\` is available as an alias for the same agent.)
+      Available review skills - pass one in \`load_skills\`: \`argus-review\` (default uncommitted pass), \`argus-pr\` (branch-vs-base PR review), \`argus-commit\` (single commit + quality check, takes \`<commit-hash>\`), \`argus-security\` (security audit, auto-promotes to P-1), \`argus-custom\` (user-supplied instructions), \`argus-plan\` (read-only planning, NOT a bug review).
+   b. Fix ALL P-1 (blocker), P-2 (high), and P-3 (medium) findings. P-4 — fix if quick, note otherwise.
+   c. Re-review after fixes (same \`load_skills\`). Repeat until zero P-1/P-2/P-3.
    Skip ONLY for: trivial changes (typo, config tweak), docs-only, user says not to review.
    </review_loop>
 
@@ -369,7 +370,7 @@ Every implementation task follows this cycle. No exceptions.
    - Every planned task/todo item is marked completed
    - Diagnostics are clean on all changed files
    - Build passes (if applicable)
-   - Review loop clean (zero P0/P1/P2 findings)
+   - Review loop clean (zero P-1/P-2/P-3 findings)
    - User's original request is FULLY addressed - not partially, not "you can extend later"
    - Any blocked items are explicitly marked [blocked] with what is missing
    </completeness_contract>
@@ -412,9 +413,13 @@ Every \`task()\` returns a session_id. Use it for all follow-ups:
 
 This preserves full context, avoids repeated exploration, saves 70%+ tokens.
 
-${oracleSection ? `### Oracle
+${
+  oracleSection
+    ? `### Oracle
 
-${oracleSection}` : ""}
+${oracleSection}`
+    : ""
+}
 </delegation>`;
 
   const styleBlock = `<style>

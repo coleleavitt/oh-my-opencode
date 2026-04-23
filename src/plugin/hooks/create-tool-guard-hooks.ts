@@ -3,6 +3,7 @@ import type { ModelCacheState } from "../../plugin-state"
 import type { PluginContext } from "../types"
 
 import {
+  createArgusAutoReviewHook,
   createCommentCheckerHooks,
   createToolOutputTruncatorHook,
   createDirectoryAgentsInjectorHook,
@@ -17,6 +18,9 @@ import {
   createJsonErrorRecoveryHook,
   createTodoDescriptionOverrideHook,
   createWebFetchRedirectGuardHook,
+  createPermissionRequestHook,
+  createPermissionDeniedHook,
+  createCwdChangedHook,
 } from "../../hooks"
 import {
   getOpenCodeVersion,
@@ -27,6 +31,9 @@ import {
 import { safeCreateHook } from "../../shared/safe-create-hook"
 
 export type ToolGuardHooks = {
+  argusAutoReview: ReturnType<typeof createArgusAutoReviewHook> | null
+  permissionRequest: ReturnType<typeof createPermissionRequestHook> | null
+  permissionDenied: ReturnType<typeof createPermissionDeniedHook> | null
   commentChecker: ReturnType<typeof createCommentCheckerHooks> | null
   toolOutputTruncator: ReturnType<typeof createToolOutputTruncatorHook> | null
   directoryAgentsInjector: ReturnType<typeof createDirectoryAgentsInjectorHook> | null
@@ -41,6 +48,7 @@ export type ToolGuardHooks = {
   readImageResizer: ReturnType<typeof createReadImageResizerHook> | null
   todoDescriptionOverride: ReturnType<typeof createTodoDescriptionOverrideHook> | null
   webfetchRedirectGuard: ReturnType<typeof createWebFetchRedirectGuardHook> | null
+  cwdChanged: ReturnType<typeof createCwdChangedHook> | null
 }
 
 export function createToolGuardHooks(args: {
@@ -54,6 +62,18 @@ export function createToolGuardHooks(args: {
   const safeHook = <T>(hookName: HookName, factory: () => T): T | null =>
     safeCreateHook(hookName, factory, { enabled: safeHookEnabled })
 
+  const argusAutoReview = isHookEnabled("argus-auto-review")
+    ? safeHook("argus-auto-review", () => createArgusAutoReviewHook(ctx, pluginConfig))
+    : null
+
+  const permissionRequest = isHookEnabled("permission-request")
+    ? safeHook("permission-request", () => createPermissionRequestHook(pluginConfig))
+    : null
+
+  const permissionDenied = isHookEnabled("permission-denied")
+    ? safeHook("permission-denied", () => createPermissionDeniedHook(pluginConfig))
+    : null
+
   const commentChecker = isHookEnabled("comment-checker")
     ? safeHook("comment-checker", () => createCommentCheckerHooks(pluginConfig.comment_checker))
     : null
@@ -65,6 +85,9 @@ export function createToolGuardHooks(args: {
           experimental: pluginConfig.experimental,
         }))
     : null
+
+  const cc = pluginConfig.claude_code
+  const mdExcludes = cc?.md_excludes
 
   let directoryAgentsInjector: ReturnType<typeof createDirectoryAgentsInjectorHook> | null = null
   if (isHookEnabled("directory-agents-injector")) {
@@ -78,25 +101,25 @@ export function createToolGuardHooks(args: {
       })
     } else {
       directoryAgentsInjector = safeHook("directory-agents-injector", () =>
-        createDirectoryAgentsInjectorHook(ctx, modelCacheState))
+        createDirectoryAgentsInjectorHook(ctx, modelCacheState, { mdExcludes }))
     }
   }
 
   const directoryReadmeInjector = isHookEnabled("directory-readme-injector")
     ? safeHook("directory-readme-injector", () =>
-        createDirectoryReadmeInjectorHook(ctx, modelCacheState))
+        createDirectoryReadmeInjectorHook(ctx, modelCacheState, { mdExcludes }))
     : null
 
   const emptyTaskResponseDetector = isHookEnabled("empty-task-response-detector")
     ? safeHook("empty-task-response-detector", () => createEmptyTaskResponseDetectorHook(ctx))
     : null
 
-  const cc = pluginConfig.claude_code
   const skipClaudeUserRules = cc?.hooks === false
   const rulesInjector = isHookEnabled("rules-injector")
     ? safeHook("rules-injector", () =>
         createRulesInjectorHook(ctx, modelCacheState, {
           skipClaudeUserRules,
+          mdExcludes,
         }))
     : null
 
@@ -133,7 +156,15 @@ export function createToolGuardHooks(args: {
     ? safeHook("webfetch-redirect-guard", () => createWebFetchRedirectGuardHook(ctx))
     : null
 
+  const cwdChanged =
+    isHookEnabled("cwd-changed") && pluginConfig.cwd_changed?.enabled
+      ? safeHook("cwd-changed", () => createCwdChangedHook(ctx, pluginConfig))
+      : null
+
   return {
+    argusAutoReview,
+    permissionRequest,
+    permissionDenied,
     commentChecker,
     toolOutputTruncator,
     directoryAgentsInjector,
@@ -148,5 +179,6 @@ export function createToolGuardHooks(args: {
     readImageResizer,
     todoDescriptionOverride,
     webfetchRedirectGuard,
+    cwdChanged,
   }
 }

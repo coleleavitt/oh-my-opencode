@@ -1,15 +1,20 @@
 import { z } from "zod"
 import { AnyMcpNameSchema } from "../../mcp/types"
 import { BuiltinSkillNameSchema } from "./agent-names"
+import { AgentDefinitionsConfigSchema } from "./agent-definitions"
 import { AgentOverridesSchema } from "./agent-overrides"
+import { ArgusAutoReviewConfigSchema } from "./argus-auto-review"
+import { AutoMemoryConfigSchema } from "./auto-memory"
 import { BabysittingConfigSchema } from "./babysitting"
 import { BackgroundTaskConfigSchema } from "./background-task"
 import { BrowserAutomationConfigSchema } from "./browser-automation"
 import { CategoriesConfigSchema } from "./categories"
 import { ClaudeCodeConfigSchema } from "./claude-code"
+import { CwdChangedConfigSchema } from "./cwd-changed"
 import { CommentCheckerConfigSchema } from "./comment-checker"
 import { BuiltinCommandNameSchema } from "./commands"
 import { ExperimentalConfigSchema } from "./experimental"
+import { FileChangedConfigSchema } from "./file-changed"
 import { GitMasterConfigSchema } from "./git-master"
 import { NotificationConfigSchema } from "./notification"
 import { OpenClawConfigSchema } from "./openclaw"
@@ -21,6 +26,8 @@ import { SisyphusConfigSchema } from "./sisyphus"
 import { SisyphusAgentConfigSchema } from "./sisyphus-agent"
 import { TmuxConfigSchema } from "./tmux"
 import { StartWorkConfigSchema } from "./start-work"
+import { StatusLineConfigSchema } from "./status-line"
+import { PermissionAutomationConfigSchema } from "./permission-automation"
 import { WebsearchConfigSchema } from "./websearch"
 
 export const OhMyOpenCodeConfigSchema = z.object({
@@ -36,6 +43,7 @@ export const OhMyOpenCodeConfigSchema = z.object({
   disabled_commands: z.array(BuiltinCommandNameSchema).optional(),
   /** Disable specific tools by name (e.g., ["todowrite", "todoread"]) */
   disabled_tools: z.array(z.string()).optional(),
+  agent_definitions: AgentDefinitionsConfigSchema,
   mcp_env_allowlist: z.array(z.string()).optional(),
   /** Enable hashline_edit tool/hook integrations (default: false) */
   hashline_edit: z.boolean().optional(),
@@ -61,6 +69,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
   model_capabilities: ModelCapabilitiesConfigSchema.optional(),
   openclaw: OpenClawConfigSchema.optional(),
   babysitting: BabysittingConfigSchema.optional(),
+  argus_auto_review: ArgusAutoReviewConfigSchema.optional(),
+  auto_memory: AutoMemoryConfigSchema.optional(),
   git_master: GitMasterConfigSchema.default({
     commit_footer: true,
     include_co_authored_by: true,
@@ -71,6 +81,10 @@ export const OhMyOpenCodeConfigSchema = z.object({
   tmux: TmuxConfigSchema.optional(),
   sisyphus: SisyphusConfigSchema.optional(),
   start_work: StartWorkConfigSchema.optional(),
+  permission_automation: PermissionAutomationConfigSchema.optional(),
+  status_line: StatusLineConfigSchema.optional(),
+  file_changed: FileChangedConfigSchema.optional(),
+  cwd_changed: CwdChangedConfigSchema.optional(),
   /** Migration history to prevent re-applying migrations (e.g., model version upgrades) */
   _migrations: z.array(z.string()).optional(),
 })

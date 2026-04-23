@@ -14,7 +14,8 @@ import {
   discoverProjectClaudeSkills,
   discoverUserClaudeSkills,
 } from "../features/opencode-skill-loader";
-import { loadProjectAgents, loadUserAgents } from "../features/claude-code-agent-loader";
+import { loadProjectAgents, loadUserAgents, loadOpencodeGlobalAgents, loadOpencodeProjectAgents, loadAgentDefinitions, readOpencodeConfigAgents } from "../features/claude-code-agent-loader";
+import { resolveAgentDefinitionPaths } from "../shared/resolve-agent-definition-paths";
 import type { PluginComponents } from "./plugin-components-loader";
 import { reorderAgentsByPriority } from "./agent-priority-order";
 import { remapAgentKeysToDisplayNames } from "./agent-key-remapper";
@@ -49,6 +50,11 @@ export async function applyAgentConfig(params: {
       return AGENT_NAME_MAP[agent.toLowerCase()] ?? AGENT_NAME_MAP[agent] ?? agent;
     },
   ) as typeof params.pluginConfig.disabled_agents;
+
+  const forkAgentEnabled = params.pluginConfig.experimental?.fork_agent_enabled ?? false;
+  if (!forkAgentEnabled && !migratedDisabledAgents?.includes("fork")) {
+    migratedDisabledAgents?.push("fork");
+  }
 
   const includeClaudeSkillsForAwareness = params.pluginConfig.claude_code?.skills ?? true;
   const [
@@ -96,7 +102,21 @@ export async function applyAgentConfig(params: {
   const includeClaudeAgents = params.pluginConfig.claude_code?.agents ?? true;
   const userAgents = includeClaudeAgents ? loadUserAgents() : {};
   const projectAgents = includeClaudeAgents ? loadProjectAgents(params.ctx.directory) : {};
+  const opencodeGlobalAgents = loadOpencodeGlobalAgents();
+  const opencodeProjectAgents = loadOpencodeProjectAgents(params.ctx.directory);
   const rawPluginAgents = params.pluginComponents.agents;
+
+  const agentDefinitionAgents = params.pluginConfig.agent_definitions
+    ? loadAgentDefinitions(
+        resolveAgentDefinitionPaths(
+          params.pluginConfig.agent_definitions,
+          params.ctx.directory,
+          params.ctx.directory,
+        ),
+        "definition-file",
+      )
+    : {};
+  const opencodeConfigAgents = readOpencodeConfigAgents(params.ctx.directory);
 
   const pluginAgents = Object.fromEntries(
     Object.entries(rawPluginAgents).map(([key, value]) => {
@@ -113,7 +133,11 @@ export async function applyAgentConfig(params: {
     ...Object.entries(configAgent ?? {}),
     ...Object.entries(userAgents),
     ...Object.entries(projectAgents),
+    ...Object.entries(opencodeGlobalAgents),
+    ...Object.entries(opencodeProjectAgents),
     ...Object.entries(pluginAgents).filter(([, config]) => config !== undefined),
+    ...Object.entries(agentDefinitionAgents),
+    ...Object.entries(opencodeConfigAgents),
   ]
     .filter(([, config]) => config != null)
     .map(([name, config]) => ({
@@ -257,6 +281,22 @@ export async function applyAgentConfig(params: {
       pluginAgents,
       protectedBuiltinAgentNames,
     );
+    const filteredOpencodeGlobalAgents = filterProtectedAgentOverrides(
+      opencodeGlobalAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredOpencodeProjectAgents = filterProtectedAgentOverrides(
+      opencodeProjectAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredAgentDefinitionAgents = filterProtectedAgentOverrides(
+      agentDefinitionAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredOpencodeConfigAgents = filterProtectedAgentOverrides(
+      opencodeConfigAgents,
+      protectedBuiltinAgentNames,
+    );
 
     params.config.agent = {
       ...agentConfig,
@@ -265,9 +305,13 @@ export async function applyAgentConfig(params: {
           ([key]) => key !== "sisyphus" && key !== "hephaestus" && key !== "atlas",
         ),
       ),
-      ...filterDisabledAgents(filteredUserAgents),
-      ...filterDisabledAgents(filteredProjectAgents),
       ...filterDisabledAgents(filteredPluginAgents),
+      ...filterDisabledAgents(filteredUserAgents),
+      ...filterDisabledAgents(filteredOpencodeGlobalAgents),
+      ...filterDisabledAgents(filteredProjectAgents),
+      ...filterDisabledAgents(filteredOpencodeProjectAgents),
+      ...filterDisabledAgents(filteredAgentDefinitionAgents),
+      ...filterDisabledAgents(filteredOpencodeConfigAgents),
       ...filteredConfigAgents,
       build: { ...migratedBuild, mode: "subagent", hidden: true },
       ...(planDemoteConfig ? { plan: planDemoteConfig } : {}),
@@ -288,6 +332,22 @@ export async function applyAgentConfig(params: {
       pluginAgents,
       protectedBuiltinAgentNames,
     );
+    const filteredOpencodeGlobalAgents = filterProtectedAgentOverrides(
+      opencodeGlobalAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredOpencodeProjectAgents = filterProtectedAgentOverrides(
+      opencodeProjectAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredAgentDefinitionAgents = filterProtectedAgentOverrides(
+      agentDefinitionAgents,
+      protectedBuiltinAgentNames,
+    );
+    const filteredOpencodeConfigAgents = filterProtectedAgentOverrides(
+      opencodeConfigAgents,
+      protectedBuiltinAgentNames,
+    );
 
     const defaultedConfigAgents = configAgent
       ? Object.fromEntries(
@@ -302,9 +362,13 @@ export async function applyAgentConfig(params: {
 
     params.config.agent = {
       ...builtinAgents,
-      ...filterDisabledAgents(filteredUserAgents),
-      ...filterDisabledAgents(filteredProjectAgents),
       ...filterDisabledAgents(filteredPluginAgents),
+      ...filterDisabledAgents(filteredUserAgents),
+      ...filterDisabledAgents(filteredOpencodeGlobalAgents),
+      ...filterDisabledAgents(filteredProjectAgents),
+      ...filterDisabledAgents(filteredOpencodeProjectAgents),
+      ...filterDisabledAgents(filteredAgentDefinitionAgents),
+      ...filterDisabledAgents(filteredOpencodeConfigAgents),
       ...defaultedConfigAgents,
     };
   }

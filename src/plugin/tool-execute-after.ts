@@ -107,6 +107,8 @@ export function createToolExecuteAfterHandler(args: {
     }
 
     const runToolExecuteAfterHooks = async (): Promise<void> => {
+      await hooks.argusAutoReview?.["tool.execute.after"]?.(input, output)
+      await hooks.permissionDenied?.["tool.execute.after"]?.(input, output)
       await hooks.toolOutputTruncator?.["tool.execute.after"]?.(input, output)
       await hooks.claudeCodeHooks?.["tool.execute.after"]?.(input, output)
       await hooks.preemptiveCompaction?.["tool.execute.after"]?.(input, output)

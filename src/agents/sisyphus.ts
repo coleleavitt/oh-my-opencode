@@ -1,6 +1,7 @@
 import type { AgentConfig } from "@opencode-ai/sdk";
 import type { AgentMode, AgentPromptMetadata } from "./types";
 import { isGptModel, isGeminiModel, isGpt5_4Model } from "./types";
+import { getGptApplyPatchPermission } from "./gpt-apply-patch-guard";
 import {
   buildGeminiToolMandate,
   buildGeminiDelegationOverride,
@@ -66,7 +67,10 @@ function buildDynamicSisyphusPrompt(
   const oracleSection = buildOracleSection(availableAgents);
   const hardBlocks = buildHardBlocksSection();
   const antiPatterns = buildAntiPatternsSection();
-  const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
+  const parallelDelegationSection = buildParallelDelegationSection(
+    model,
+    availableCategories,
+  );
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
   const todoHookNote = useTaskSystem
@@ -430,17 +434,17 @@ A task is complete when:
 
 After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
 
-1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
-2. **Fix ALL P0 (critical), P1 (high), and P2 (medium) findings.** P3 (low) — fix if quick, otherwise note and skip.
-3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
-4. **Repeat** until zero P0, P1, and P2 findings.
+1. **Delegate review**: \`task(subagent_type="code-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P-1 through P-4 issues using the 5-axis rubric (Impact × Trigger × Blast Radius × Fix Effort × Confidence). Focus on bugs introduced by recent edits.")\` (\`argus\` is available as an alias for the same agent.)
+2. **Fix ALL P-1 (blocker), P-2 (high), and P-3 (medium) findings.** P-4 (low) — fix if quick, otherwise note and skip.
+3. **Re-review** after fixes — delegate to code-reviewer again to confirm fixes are clean.
+4. **Repeat** until zero P-1, P-2, and P-3 findings.
 
 **Skip the review loop ONLY when:**
 - Changes are trivial (typo fix, config tweak, single-line change)
 - User explicitly says not to review
 - Changes are documentation-only
 
-**Update todos during the loop**: Add a "Review: delegate to cubic-reviewer and fix findings" todo item and track it.
+**Update todos during the loop**: Add a "Review: delegate to code-reviewer (Argus) and fix findings" todo item and track it.
 
 ### Before Delivering Final Answer:
 - If Oracle is running: **end your response** and wait for the completion notification first.
@@ -545,6 +549,7 @@ export function createSisyphusAgent(
       permission: {
         question: "allow",
         call_omo_agent: "deny",
+        ...getGptApplyPatchPermission(model),
       } as AgentConfig["permission"],
       reasoningEffort: "medium",
     };
@@ -563,13 +568,13 @@ export function createSisyphusAgent(
     // 1. Intent gate + tool mandate - early in prompt (after intent verbalization)
     prompt = prompt.replace(
       "</intent_verbalization>",
-      `</intent_verbalization>\n\n${buildGeminiIntentGateEnforcement()}\n\n${buildGeminiToolMandate()}`
+      `</intent_verbalization>\n\n${buildGeminiIntentGateEnforcement()}\n\n${buildGeminiToolMandate()}`,
     );
 
     // 2. Tool guide + examples - after tool_usage_rules (where tools are discussed)
     prompt = prompt.replace(
       "</tool_usage_rules>",
-      `</tool_usage_rules>\n\n${buildGeminiToolGuide()}\n\n${buildGeminiToolCallExamples()}`
+      `</tool_usage_rules>\n\n${buildGeminiToolGuide()}\n\n${buildGeminiToolCallExamples()}`,
     );
 
     // 3. Delegation + verification overrides - before Constraints (NOT at prompt end)
@@ -577,13 +582,14 @@ export function createSisyphusAgent(
     //    Placing these before <Constraints> ensures they're in a high-attention zone.
     prompt = prompt.replace(
       "<Constraints>",
-      `${buildGeminiDelegationOverride()}\n\n${buildGeminiVerificationOverride()}\n\n<Constraints>`
+      `${buildGeminiDelegationOverride()}\n\n${buildGeminiVerificationOverride()}\n\n<Constraints>`,
     );
   }
 
   const permission = {
     question: "allow",
     call_omo_agent: "deny",
+    ...getGptApplyPatchPermission(model),
   } as AgentConfig["permission"];
   const base = {
     description:

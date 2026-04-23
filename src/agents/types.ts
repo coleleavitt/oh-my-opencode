@@ -86,7 +86,9 @@ export function isGpt5_4Model(model: string): boolean {
 
 export function isGpt5_3CodexModel(model: string): boolean {
   const modelName = extractModelName(model).toLowerCase();
-  return modelName.includes("gpt-5.3-codex") || modelName.includes("gpt-5-3-codex");
+  return (
+    modelName.includes("gpt-5.3-codex") || modelName.includes("gpt-5-3-codex")
+  );
 }
 
 const GEMINI_PROVIDERS = ["google/", "google-vertex/"];
@@ -125,7 +127,9 @@ export type BuiltinAgentName =
   | "momus"
   | "atlas"
   | "sisyphus-junior"
-  | "cubic-reviewer";
+  | "code-reviewer"
+  | "argus"
+  | "fork";
 
 export type OverridableAgentName = "build" | BuiltinAgentName;
 
@@ -134,7 +138,12 @@ export type AgentName = BuiltinAgentName;
 export type AgentOverrideConfig = Partial<AgentConfig> & {
   prompt_append?: string;
   variant?: string;
-  fallback_models?: string | (string | import("../config/schema/fallback-models").FallbackModelObject)[];
+  fallback_models?:
+    | string
+    | (
+        | string
+        | import("../config/schema/fallback-models").FallbackModelObject
+      )[];
 };
 
 export type AgentOverrides = Partial<

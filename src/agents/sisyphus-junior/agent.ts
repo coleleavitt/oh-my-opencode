@@ -13,6 +13,7 @@
 import type { AgentConfig } from "@opencode-ai/sdk"
 import type { AgentMode } from "../types"
 import { isGlmModel, isGptModel, isGeminiModel } from "../types"
+import { getGptApplyPatchPermission } from "../gpt-apply-patch-guard"
 import type { AgentOverrideConfig } from "../../config/schema"
 import {
   createAgentToolRestrictions,
@@ -102,6 +103,10 @@ export function createSisyphusJuniorAgentWithOverrides(
   }
   merged.call_omo_agent = "allow"
   const toolsConfig = { permission: { ...merged, ...basePermission } }
+  const permission: Record<string, PermissionValue> = {
+    ...toolsConfig.permission,
+    ...getGptApplyPatchPermission(model),
+  }
 
   const base: AgentConfig = {
     description: override?.description ??
@@ -112,7 +117,7 @@ export function createSisyphusJuniorAgentWithOverrides(
     maxTokens: 64000,
     prompt,
     color: override?.color ?? "#20B2AA",
-    ...toolsConfig,
+    permission,
   }
 
   if (override?.top_p !== undefined) {

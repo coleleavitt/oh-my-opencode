@@ -375,14 +375,44 @@ export function createEventHandler(args: {
       input,
     );
     await runEventHookSafely(
+      "argusAutoReview",
+      hooks.argusAutoReview?.event,
+      input,
+    );
+    await runEventHookSafely(
       "writeExistingFileGuard",
       hooks.writeExistingFileGuard?.event,
+      input,
+    );
+    await runEventHookSafely(
+      "sessionEnd",
+      hooks.sessionEnd?.event,
+      input,
+    );
+    await runEventHookSafely(
+      "statusLine",
+      hooks.statusLine?.event,
       input,
     );
     await runEventHookSafely("atlasHook", hooks.atlasHook?.handler, input);
     await runEventHookSafely(
       "autoSlashCommand",
       hooks.autoSlashCommand?.event,
+      input,
+    );
+    await runEventHookSafely(
+      "autoMemory",
+      hooks.autoMemory?.event,
+      input,
+    );
+    await runEventHookSafely(
+      "fileChanged",
+      hooks.fileChanged?.event,
+      input,
+    );
+    await runEventHookSafely(
+      "cwdChanged",
+      hooks.cwdChanged?.event,
       input,
     );
   };

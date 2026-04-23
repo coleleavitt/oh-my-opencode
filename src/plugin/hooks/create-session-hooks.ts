@@ -30,6 +30,10 @@ import {
   createGitDiffInjectorHook,
   createCostTrackerHook,
   createMemoryInjectionHook,
+  createSessionEndHook,
+  createStatusLineHook,
+  createAutoMemoryHook,
+  createFileChangedHook,
 } from "../../hooks";
 import { createAnthropicEffortHook } from "../../hooks/anthropic-effort";
 import {
@@ -82,6 +86,10 @@ export type SessionHooks = {
   gitDiffInjector: ReturnType<typeof createGitDiffInjectorHook> | null;
   costTracker: ReturnType<typeof createCostTrackerHook> | null;
   memoryInjection: ReturnType<typeof createMemoryInjectionHook> | null;
+  sessionEnd: ReturnType<typeof createSessionEndHook> | null;
+  statusLine: ReturnType<typeof createStatusLineHook> | null;
+  autoMemory: ReturnType<typeof createAutoMemoryHook> | null;
+  fileChanged: ReturnType<typeof createFileChangedHook> | null;
 };
 
 export function createSessionHooks(args: {
@@ -350,6 +358,29 @@ export function createSessionHooks(args: {
     createMemoryInjectionHook(ctx.directory),
   );
 
+  const sessionEnd = isHookEnabled("session-end")
+    ? safeHook("session-end", () => createSessionEndHook())
+    : null;
+
+  const statusLine =
+    isHookEnabled("status-line") && pluginConfig.status_line?.enabled
+      ? safeHook("status-line", () =>
+          createStatusLineHook(pluginConfig.status_line!),
+        )
+      : null;
+
+  const autoMemory =
+    isHookEnabled("auto-memory") && pluginConfig.auto_memory?.enabled
+      ? safeHook("auto-memory", () =>
+          createAutoMemoryHook(ctx, pluginConfig),
+        )
+      : null;
+
+  const fileChanged =
+    isHookEnabled("file-changed") && pluginConfig.file_changed?.enabled
+      ? safeHook("file-changed", () => createFileChangedHook(ctx, pluginConfig))
+      : null;
+
   return {
     contextWindowMonitor,
     preemptiveCompaction,
@@ -378,5 +409,9 @@ export function createSessionHooks(args: {
     gitDiffInjector,
     memoryInjection,
     costTracker,
+    sessionEnd,
+    statusLine,
+    autoMemory,
+    fileChanged,
   };
 }
