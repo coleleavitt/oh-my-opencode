@@ -7,6 +7,18 @@ import { getCachedVersion } from "./cached-version"
 import { getLatestVersion } from "./latest-version"
 
 export async function checkForUpdate(directory: string): Promise<UpdateCheckResult> {
+  if (process.env.OMO_DISABLE_UPDATES === "1") {
+    log("[auto-update-checker] Skipped: OMO_DISABLE_UPDATES=1")
+    return {
+      needsUpdate: false,
+      currentVersion: null,
+      latestVersion: null,
+      isLocalDev: false,
+      isPinned: false,
+      disabled: true,
+    }
+  }
+
   if (isLocalDevMode(directory)) {
     log("[auto-update-checker] Local dev mode detected, skipping update check")
     return {

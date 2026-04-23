@@ -9,9 +9,15 @@ export const PermissionRuleSchema = z.object({
 })
 export type PermissionRule = z.infer<typeof PermissionRuleSchema>
 
+export const PermissionRuleEntrySchema = z.union([
+  z.literal("$defaults"),
+  PermissionRuleSchema,
+])
+export type PermissionRuleEntry = z.infer<typeof PermissionRuleEntrySchema>
+
 export const PermissionAutomationConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  rules: z.array(PermissionRuleSchema).default([]),
+  rules: z.array(PermissionRuleEntrySchema).default([]),
   log_decisions: z.boolean().default(true),
 })
 export type PermissionAutomationConfig = z.infer<typeof PermissionAutomationConfigSchema>

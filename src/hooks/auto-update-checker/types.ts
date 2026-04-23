@@ -22,6 +22,7 @@ export interface UpdateCheckResult {
   latestVersion: string | null
   isLocalDev: boolean
   isPinned: boolean
+  disabled?: boolean
 }
 
 export interface AutoUpdateCheckerOptions {

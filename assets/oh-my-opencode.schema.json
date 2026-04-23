@@ -6226,31 +6226,39 @@
           "default": [],
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "tool_pattern": {
+            "anyOf": [
+              {
                 "type": "string",
-                "minLength": 1,
-                "description": "Glob pattern matching tool name, e.g., 'bash', 'edit', 'write', or 'grep_app_*'"
+                "const": "$defaults"
               },
-              "command_pattern": {
-                "description": "Optional sub-pattern for bash commands, e.g., 'npm *', 'git status*'",
-                "type": "string"
-              },
-              "action": {
-                "type": "string",
-                "enum": [
-                  "allow",
-                  "deny",
-                  "ask"
-                ]
+              {
+                "type": "object",
+                "properties": {
+                  "tool_pattern": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Glob pattern matching tool name, e.g., 'bash', 'edit', 'write', or 'grep_app_*'"
+                  },
+                  "command_pattern": {
+                    "description": "Optional sub-pattern for bash commands, e.g., 'npm *', 'git status*'",
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "allow",
+                      "deny",
+                      "ask"
+                    ]
+                  }
+                },
+                "required": [
+                  "tool_pattern",
+                  "action"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "tool_pattern",
-              "action"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "log_decisions": {

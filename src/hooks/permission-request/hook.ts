@@ -1,6 +1,6 @@
 import type { OhMyOpenCodeConfig } from "../../config"
 import { log } from "../../shared"
-import { matchRule } from "../../features/permission-automation"
+import { expandDefaults, matchRule } from "../../features/permission-automation"
 
 const HOOK_TAG = "[permission-request]"
 
@@ -8,13 +8,15 @@ export function createPermissionRequestHook(pluginConfig: OhMyOpenCodeConfig) {
   const config = pluginConfig.permission_automation
   if (!config?.enabled || config.rules.length === 0) return {}
 
+  const expandedRules = expandDefaults(config.rules)
+
   return {
     "tool.execute.before": async (
       input: { tool: string; sessionID: string; callID: string },
       output: { args: Record<string, unknown> },
     ): Promise<void> => {
       const command = typeof output.args.command === "string" ? output.args.command : undefined
-      const match = matchRule({ tool: input.tool.toLowerCase(), command }, config.rules)
+      const match = matchRule({ tool: input.tool.toLowerCase(), command }, expandedRules)
       if (!match.matched) return
 
       if (config.log_decisions) {
