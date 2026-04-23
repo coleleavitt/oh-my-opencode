@@ -47,6 +47,7 @@ export { createHashlineEditTool } from "./hashline-edit"
 export { createSaveMemoryTool } from "./memory-save"
 export { createDeleteMemoryTool } from "./memory-delete"
 export { createListMemoriesTool } from "./memory-list"
+export { createNotebookEditTool } from "./notebook-edit"
 
 export function createBackgroundTools(manager: BackgroundManager, client: OpencodeClient): Record<string, ToolDefinition> {
   const outputManager: BackgroundOutputManager = manager

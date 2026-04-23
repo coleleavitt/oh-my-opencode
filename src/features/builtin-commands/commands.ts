@@ -1,25 +1,32 @@
-import type { CommandDefinition } from "../claude-code-command-loader"
-import { isAgentRegistered } from "../claude-code-session-state"
-import type { BuiltinCommandName, BuiltinCommands } from "./types"
-import { INIT_DEEP_TEMPLATE } from "./templates/init-deep"
-import { RALPH_LOOP_TEMPLATE, ULW_LOOP_TEMPLATE, CANCEL_RALPH_TEMPLATE } from "./templates/ralph-loop"
-import { STOP_CONTINUATION_TEMPLATE } from "./templates/stop-continuation"
-import { REFACTOR_TEMPLATE } from "./templates/refactor"
-import { START_WORK_TEMPLATE } from "./templates/start-work"
-import { HANDOFF_TEMPLATE } from "./templates/handoff"
-import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review"
-import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops"
+import type { CommandDefinition } from "../claude-code-command-loader";
+import { isAgentRegistered } from "../claude-code-session-state";
+import type { BuiltinCommandName, BuiltinCommands } from "./types";
+import { INIT_DEEP_TEMPLATE } from "./templates/init-deep";
+import {
+  RALPH_LOOP_TEMPLATE,
+  ULW_LOOP_TEMPLATE,
+  CANCEL_RALPH_TEMPLATE,
+} from "./templates/ralph-loop";
+import { STOP_CONTINUATION_TEMPLATE } from "./templates/stop-continuation";
+import { REFACTOR_TEMPLATE } from "./templates/refactor";
+import { START_WORK_TEMPLATE } from "./templates/start-work";
+import { HANDOFF_TEMPLATE } from "./templates/handoff";
+import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review";
+import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops";
+import { SECURITY_REVIEW_TEMPLATE } from "./templates/security-review";
 
 export interface LoadBuiltinCommandsOptions {
-  useRegisteredAgents?: boolean
+  useRegisteredAgents?: boolean;
 }
 
-function resolveStartWorkAgent(options?: LoadBuiltinCommandsOptions): "atlas" | "sisyphus" {
+function resolveStartWorkAgent(
+  options?: LoadBuiltinCommandsOptions,
+): "atlas" | "sisyphus" {
   if (options?.useRegisteredAgents) {
-    return isAgentRegistered("atlas") ? "atlas" : "sisyphus"
+    return isAgentRegistered("atlas") ? "atlas" : "sisyphus";
   }
 
-  return "atlas"
+  return "atlas";
 }
 
 function createBuiltinCommandDefinitions(
@@ -37,28 +44,32 @@ $ARGUMENTS
 </user-request>`,
       argumentHint: "[--create-new] [--max-depth=N]",
     },
-     "ralph-loop": {
-       description: "(builtin) Start self-referential development loop until completion",
-       template: `<command-instruction>
+    "ralph-loop": {
+      description:
+        "(builtin) Start self-referential development loop until completion",
+      template: `<command-instruction>
 ${RALPH_LOOP_TEMPLATE}
 </command-instruction>
 
 <user-task>
 $ARGUMENTS
 </user-task>`,
-       argumentHint: '"task description" [--completion-promise=TEXT] [--max-iterations=N] [--strategy=reset|continue]',
-     },
-     "ulw-loop": {
-        description: "(builtin) Start ultrawork loop - continues until completion with ultrawork mode",
-        template: `<command-instruction>
+      argumentHint:
+        '"task description" [--completion-promise=TEXT] [--max-iterations=N] [--strategy=reset|continue]',
+    },
+    "ulw-loop": {
+      description:
+        "(builtin) Start ultrawork loop - continues until completion with ultrawork mode",
+      template: `<command-instruction>
 ${ULW_LOOP_TEMPLATE}
 </command-instruction>
 
 <user-task>
 $ARGUMENTS
 </user-task>`,
-        argumentHint: '"task description" [--completion-promise=TEXT] [--strategy=reset|continue]',
-      },
+      argumentHint:
+        '"task description" [--completion-promise=TEXT] [--strategy=reset|continue]',
+    },
     "cancel-ralph": {
       description: "(builtin) Cancel active Ralph Loop",
       template: `<command-instruction>
@@ -71,7 +82,8 @@ ${CANCEL_RALPH_TEMPLATE}
       template: `<command-instruction>
 ${REFACTOR_TEMPLATE}
 </command-instruction>`,
-      argumentHint: "<refactoring-target> [--scope=<file|module|project>] [--strategy=<safe|aggressive>]",
+      argumentHint:
+        "<refactoring-target> [--scope=<file|module|project>] [--strategy=<safe|aggressive>]",
     },
     "start-work": {
       description: "(builtin) Start Sisyphus work session from Prometheus plan",
@@ -91,13 +103,15 @@ $ARGUMENTS
       argumentHint: "[plan-name]",
     },
     "stop-continuation": {
-      description: "(builtin) Stop all continuation mechanisms (ralph loop, todo continuation, boulder) for this session",
+      description:
+        "(builtin) Stop all continuation mechanisms (ralph loop, todo continuation, boulder) for this session",
       template: `<command-instruction>
 ${STOP_CONTINUATION_TEMPLATE}
 </command-instruction>`,
     },
     review: {
-      description: "(builtin) Review code changes for P0-P3 bugs, security issues, and logic errors using cubic-reviewer",
+      description:
+        "(builtin) Review code changes for P-1..P-4 bugs, security issues, and logic errors via the code-reviewer subagent (Argus)",
       template: `<command-instruction>
 ${REVIEW_TEMPLATE}
 </command-instruction>
@@ -105,10 +119,12 @@ ${REVIEW_TEMPLATE}
 <user-request>
 $ARGUMENTS
 </user-request>`,
-      argumentHint: "[--commit <hash>] [--base <branch>] [--security] [--fix] [<custom instructions>]",
+      argumentHint:
+        '[--pr [base]] [--commit [hash]] [--security] [--custom "<instructions>"] [--fix] [<focus hints>]',
     },
     "review-loop": {
-      description: "(builtin) Run review→fix→re-review loop until zero P0/P1 issues remain",
+      description:
+        "(builtin) Run review→fix→re-review loop until zero P-1/P-2 issues remain",
       template: `<command-instruction>
 ${REVIEW_LOOP_TEMPLATE}
 </command-instruction>
@@ -119,7 +135,8 @@ $ARGUMENTS
       argumentHint: "[scope description]",
     },
     "remove-ai-slops": {
-      description: "(builtin) Remove AI-generated code smells from branch changes and critically review the results",
+      description:
+        "(builtin) Remove AI-generated code smells from branch changes and critically review the results",
       template: `<command-instruction>
 ${REMOVE_AI_SLOPS_TEMPLATE}
 </command-instruction>
@@ -128,8 +145,22 @@ ${REMOVE_AI_SLOPS_TEMPLATE}
 $ARGUMENTS
 </user-request>`,
     },
+    "security-review": {
+      description:
+        "(builtin) Security-focused vulnerability audit via the code-reviewer subagent (Argus) with argus-security skill",
+      template: `<command-instruction>
+${SECURITY_REVIEW_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+      argumentHint:
+        "[--branch [base]] [--commit [hash]] [--fix] [<focus hints>]",
+    },
     handoff: {
-      description: "(builtin) Create a detailed context summary for continuing work in a new session",
+      description:
+        "(builtin) Create a detailed context summary for continuing work in a new session",
       template: `<command-instruction>
 ${HANDOFF_TEMPLATE}
 </command-instruction>
@@ -144,23 +175,23 @@ $ARGUMENTS
 </user-request>`,
       argumentHint: "[goal]",
     },
-  }
+  };
 }
 
 export function loadBuiltinCommands(
   disabledCommands?: BuiltinCommandName[],
   options?: LoadBuiltinCommandsOptions,
 ): BuiltinCommands {
-  const builtinCommandDefinitions = createBuiltinCommandDefinitions(options)
-  const disabled = new Set(disabledCommands ?? [])
-  const commands: BuiltinCommands = {}
+  const builtinCommandDefinitions = createBuiltinCommandDefinitions(options);
+  const disabled = new Set(disabledCommands ?? []);
+  const commands: BuiltinCommands = {};
 
   for (const [name, definition] of Object.entries(builtinCommandDefinitions)) {
     if (!disabled.has(name as BuiltinCommandName)) {
-      const { argumentHint: _argumentHint, ...openCodeCompatible } = definition
-      commands[name] = { ...openCodeCompatible, name } as CommandDefinition
+      const { argumentHint: _argumentHint, ...openCodeCompatible } = definition;
+      commands[name] = { ...openCodeCompatible, name } as CommandDefinition;
     }
   }
 
-  return commands
+  return commands;
 }

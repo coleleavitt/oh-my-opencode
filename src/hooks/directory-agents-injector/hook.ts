@@ -30,6 +30,7 @@ interface EventInput {
 export function createDirectoryAgentsInjectorHook(
   ctx: PluginInput,
   modelCacheState?: { anthropicContext1MEnabled: boolean },
+  options?: { mdExcludes?: readonly string[] },
 ) {
   const sessionCaches = new Map<string, Set<string>>();
   const truncator = createDynamicTruncator(ctx, modelCacheState);
@@ -45,6 +46,7 @@ export function createDirectoryAgentsInjectorHook(
         filePath: output.title,
         sessionID: input.sessionID,
         output,
+        mdExcludes: options?.mdExcludes,
       });
       return;
     }

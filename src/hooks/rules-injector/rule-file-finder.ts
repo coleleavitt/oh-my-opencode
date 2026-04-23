@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
+import picomatch from "picomatch";
 import {
   PROJECT_RULE_FILES,
   PROJECT_RULE_SUBDIRS,
@@ -16,6 +17,7 @@ export interface FindRuleFilesOptions {
    * Claude Code-specific instructions from leaking into non-Claude agents.
    */
   skipClaudeUserRules?: boolean;
+  mdExcludes?: readonly string[];
 }
 
 /**
@@ -39,6 +41,9 @@ export function findRuleFiles(
 ): RuleFileCandidate[] {
   const candidates: RuleFileCandidate[] = [];
   const seenRealPaths = new Set<string>();
+  const isExcluded = options?.mdExcludes?.length
+    ? picomatch(options.mdExcludes as string[], { dot: true, bash: true })
+    : null;
 
   // Search from current file's directory up to project root
   let currentDir = dirname(currentFile);
@@ -54,6 +59,7 @@ export function findRuleFiles(
       for (const filePath of files) {
         const realPath = safeRealpathSync(filePath);
         if (seenRealPaths.has(realPath)) continue;
+        if (isExcluded && projectRoot && isExcluded(relative(projectRoot, filePath))) continue;
         seenRealPaths.add(realPath);
 
         candidates.push({
@@ -83,14 +89,16 @@ export function findRuleFiles(
           if (stat.isFile()) {
             const realPath = safeRealpathSync(filePath);
             if (!seenRealPaths.has(realPath)) {
-              seenRealPaths.add(realPath);
-              candidates.push({
-                path: filePath,
-                realPath,
-                isGlobal: false,
-                distance: 0,
-                isSingleFile: true,
-              });
+              if (!isExcluded || !isExcluded(relative(projectRoot, filePath))) {
+                seenRealPaths.add(realPath);
+                candidates.push({
+                  path: filePath,
+                  realPath,
+                  isGlobal: false,
+                  distance: 0,
+                  isSingleFile: true,
+                });
+              }
             }
           }
         } catch {

@@ -30,6 +30,7 @@ import {
   createSaveMemoryTool,
   createDeleteMemoryTool,
   createListMemoriesTool,
+  createNotebookEditTool,
 } from "../tools"
 import { getMainSessionID } from "../features/claude-code-session-state"
 import { filterDisabledTools } from "../shared/disabled-tools"
@@ -223,6 +224,7 @@ export function createToolRegistry(args: {
     ...(interactiveBashEnabled ? { interactive_bash } : {}),
     ...taskToolsRecord,
     ...hashlineToolsRecord,
+    notebook_edit: createNotebookEditTool(),
   }
 
   for (const toolDefinition of Object.values(allTools)) {

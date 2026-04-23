@@ -32,7 +32,7 @@ const TRACKED_TOOLS = ["read", "write", "edit", "multiedit"];
 export function createRulesInjectorHook(
   ctx: PluginInput,
   modelCacheState?: { anthropicContext1MEnabled: boolean },
-  options?: { skipClaudeUserRules?: boolean },
+  options?: { skipClaudeUserRules?: boolean; mdExcludes?: readonly string[] },
 ) {
   const truncator = createDynamicTruncator(ctx, modelCacheState);
   const { getSessionCache, clearSessionCache } = createSessionCacheStore();
@@ -40,8 +40,11 @@ export function createRulesInjectorHook(
     workspaceDirectory: ctx.directory,
     truncator,
     getSessionCache,
-    ruleFinderOptions: options?.skipClaudeUserRules
-      ? { skipClaudeUserRules: true }
+    ruleFinderOptions: (options?.skipClaudeUserRules || options?.mdExcludes)
+      ? {
+          ...(options.skipClaudeUserRules ? { skipClaudeUserRules: true } : {}),
+          ...(options.mdExcludes ? { mdExcludes: options.mdExcludes } : {}),
+        }
       : undefined,
   });
 

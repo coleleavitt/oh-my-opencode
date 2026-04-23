@@ -25,13 +25,18 @@ export async function processFilePathForAgentsInjection(input: {
   filePath: string;
   sessionID: string;
   output: { title: string; output: string; metadata: unknown };
+  mdExcludes?: readonly string[];
 }): Promise<void> {
   const resolved = resolveFilePath(input.ctx.directory, input.filePath);
   if (!resolved) return;
 
   const dir = dirname(resolved);
   const cache = getSessionCache(input.sessionCaches, input.sessionID);
-  const agentsPaths = findAgentsMdUp({ startDir: dir, rootDir: input.ctx.directory });
+  const agentsPaths = findAgentsMdUp({
+    startDir: dir,
+    rootDir: input.ctx.directory,
+    mdExcludes: input.mdExcludes,
+  });
 
   let dirty = false;
   for (const agentsPath of agentsPaths) {

@@ -1,0 +1,1 @@
+export { createAutoMemoryHook } from "./hook"
