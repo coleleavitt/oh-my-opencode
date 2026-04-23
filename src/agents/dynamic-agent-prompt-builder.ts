@@ -56,6 +56,7 @@ export {
   buildLookThroughWrappersSection,
   buildCommittingCodeSection,
   buildDelayedEffectsSection,
+  buildAuthorizedPentestSection,
 } from "./dynamic-agent-safety-sections"
 
 export {

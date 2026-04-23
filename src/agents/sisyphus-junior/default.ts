@@ -23,6 +23,7 @@ import {
   buildLookThroughWrappersSection,
   buildCommittingCodeSection,
   buildDelayedEffectsSection,
+  buildAuthorizedPentestSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -93,6 +94,8 @@ ${buildLookThroughWrappersSection()}
 ${buildCommittingCodeSection()}
 
 ${buildDelayedEffectsSection()}
+
+${buildAuthorizedPentestSection()}
 
 ${buildContextAwarenessSection()}
 

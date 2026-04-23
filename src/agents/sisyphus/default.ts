@@ -35,6 +35,7 @@ import {
   buildLookThroughWrappersSection,
   buildCommittingCodeSection,
   buildDelayedEffectsSection,
+  buildAuthorizedPentestSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -202,6 +203,7 @@ export function buildDefaultSisyphusPrompt(
   const lookThroughWrappers = buildLookThroughWrappersSection();
   const committingCode = buildCommittingCodeSection();
   const delayedEffects = buildDelayedEffectsSection();
+  const authorizedPentest = buildAuthorizedPentestSection();
   const contextAwareness = buildContextAwarenessSection();
   const toolResultPreservation = buildToolResultPreservationSection();
   const commentQuality = buildCommentQualitySection();
@@ -695,6 +697,8 @@ ${lookThroughWrappers}
 ${committingCode}
 
 ${delayedEffects}
+
+${authorizedPentest}
 
 ${contextAwareness}
 
