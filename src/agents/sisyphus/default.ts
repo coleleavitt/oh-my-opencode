@@ -27,6 +27,14 @@ import {
   buildSecurityCodingSection,
   buildSecurityTestingSection,
   buildContextAwarenessSection,
+  buildPromptInjectionAwarenessSection,
+  buildMalwareAnalysisSection,
+  buildCompositeActionsSection,
+  buildWrittenFileExecutionSection,
+  buildSubAgentHandoffSection,
+  buildLookThroughWrappersSection,
+  buildCommittingCodeSection,
+  buildDelayedEffectsSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -186,6 +194,14 @@ export function buildDefaultSisyphusPrompt(
   const noGoldPlating = buildNoGoldPlatingSection();
   const securityCoding = buildSecurityCodingSection();
   const securityTesting = buildSecurityTestingSection();
+  const promptInjectionAwareness = buildPromptInjectionAwarenessSection();
+  const malwareAnalysis = buildMalwareAnalysisSection();
+  const compositeActions = buildCompositeActionsSection();
+  const writtenFileExecution = buildWrittenFileExecutionSection();
+  const subAgentHandoff = buildSubAgentHandoffSection();
+  const lookThroughWrappers = buildLookThroughWrappersSection();
+  const committingCode = buildCommittingCodeSection();
+  const delayedEffects = buildDelayedEffectsSection();
   const contextAwareness = buildContextAwarenessSection();
   const toolResultPreservation = buildToolResultPreservationSection();
   const commentQuality = buildCommentQualitySection();
@@ -663,6 +679,22 @@ ${noGoldPlating}
 ${securityCoding}
 
 ${securityTesting}
+
+${promptInjectionAwareness}
+
+${malwareAnalysis}
+
+${compositeActions}
+
+${writtenFileExecution}
+
+${subAgentHandoff}
+
+${lookThroughWrappers}
+
+${committingCode}
+
+${delayedEffects}
 
 ${contextAwareness}
 

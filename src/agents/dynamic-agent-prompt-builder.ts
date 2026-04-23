@@ -48,6 +48,14 @@ export {
   buildLengthAnchorsSection,
   buildCompleteTaskFullySection,
   buildContextAwarenessSection,
+  buildPromptInjectionAwarenessSection,
+  buildMalwareAnalysisSection,
+  buildCompositeActionsSection,
+  buildWrittenFileExecutionSection,
+  buildSubAgentHandoffSection,
+  buildLookThroughWrappersSection,
+  buildCommittingCodeSection,
+  buildDelayedEffectsSection,
 } from "./dynamic-agent-safety-sections"
 
 export {

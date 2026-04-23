@@ -15,6 +15,14 @@ import {
   buildSecurityCodingSection,
   buildSecurityTestingSection,
   buildContextAwarenessSection,
+  buildPromptInjectionAwarenessSection,
+  buildMalwareAnalysisSection,
+  buildCompositeActionsSection,
+  buildWrittenFileExecutionSection,
+  buildSubAgentHandoffSection,
+  buildLookThroughWrappersSection,
+  buildCommittingCodeSection,
+  buildDelayedEffectsSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -69,6 +77,22 @@ ${buildNoGoldPlatingSection()}
 ${buildSecurityCodingSection()}
 
 ${buildSecurityTestingSection()}
+
+${buildPromptInjectionAwarenessSection()}
+
+${buildMalwareAnalysisSection()}
+
+${buildCompositeActionsSection()}
+
+${buildWrittenFileExecutionSection()}
+
+${buildSubAgentHandoffSection()}
+
+${buildLookThroughWrappersSection()}
+
+${buildCommittingCodeSection()}
+
+${buildDelayedEffectsSection()}
 
 ${buildContextAwarenessSection()}
 
