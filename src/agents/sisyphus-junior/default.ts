@@ -24,6 +24,7 @@ import {
   buildCommittingCodeSection,
   buildDelayedEffectsSection,
   buildAuthorizedPentestSection,
+  buildRefusalProofLanguageSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -96,6 +97,8 @@ ${buildCommittingCodeSection()}
 ${buildDelayedEffectsSection()}
 
 ${buildAuthorizedPentestSection()}
+
+${buildRefusalProofLanguageSection()}
 
 ${buildContextAwarenessSection()}
 

@@ -36,6 +36,7 @@ import {
   buildCommittingCodeSection,
   buildDelayedEffectsSection,
   buildAuthorizedPentestSection,
+  buildRefusalProofLanguageSection,
   buildToolResultPreservationSection,
   buildCommentQualitySection,
   buildAiSlopAwarenessSection,
@@ -204,6 +205,7 @@ export function buildDefaultSisyphusPrompt(
   const committingCode = buildCommittingCodeSection();
   const delayedEffects = buildDelayedEffectsSection();
   const authorizedPentest = buildAuthorizedPentestSection();
+  const refusalProofLanguage = buildRefusalProofLanguageSection();
   const contextAwareness = buildContextAwarenessSection();
   const toolResultPreservation = buildToolResultPreservationSection();
   const commentQuality = buildCommentQualitySection();
@@ -699,6 +701,8 @@ ${committingCode}
 ${delayedEffects}
 
 ${authorizedPentest}
+
+${refusalProofLanguage}
 
 ${contextAwareness}
 
