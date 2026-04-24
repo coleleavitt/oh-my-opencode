@@ -1,6 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { BackgroundManager } from "../../features/background-agent"
-import type { CategoriesConfig, GitMasterConfig, BrowserAutomationProvider, AgentOverrides, SisyphusAgentConfig } from "../../config/schema"
+import type { CategoriesConfig, GitMasterConfig, BrowserAutomationProvider, AgentOverrides, SisyphusAgentConfig, TeammatesConfig } from "../../config/schema"
+import type { TeammateRegistry } from "../../features/teammates"
 import type {
   AvailableCategory,
   AvailableSkill,
@@ -22,6 +23,16 @@ export interface DelegateTaskArgs {
    * surfaced to the parent in the tool result.
    */
   run_in_worktree?: boolean
+  /**
+   * Register the spawned agent session as a named teammate so the parent
+   * can continue messaging it across turns via send_message_to_teammate.
+   * Requires teammate_name. Teammates are scoped to the parent session
+   * and cleared when the parent session ends. See
+   * src/features/teammates/DESIGN.md.
+   */
+  teammate?: boolean
+  /** Stable name for the teammate (required if teammate=true). */
+  teammate_name?: string
   session_id?: string
   command?: string
   load_skills: string[]
@@ -78,6 +89,11 @@ export interface DelegateTaskToolOptions {
   sisyphusAgentConfig?: SisyphusAgentConfig
   onSyncSessionCreated?: (event: SyncSessionCreatedEvent) => Promise<void>
   syncPollTimeoutMs?: number
+  /** Teammate registry (singleton from createManagers). When absent,
+   * teammate-related args on delegate-task are silently ignored. */
+  teammateRegistry?: TeammateRegistry
+  /** Teammates config (from pluginConfig.teammates). Defaults when absent: enabled=true, max=5. */
+  teammatesConfig?: TeammatesConfig
 }
 
 import type { DelegatedModelConfig } from "../../shared/model-resolution-types"

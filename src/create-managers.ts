@@ -7,6 +7,7 @@ import { BackgroundManager } from "./features/background-agent"
 import { SkillMcpManager } from "./features/skill-mcp-manager"
 import { initTaskToastManager } from "./features/task-toast-manager"
 import { TmuxSessionManager } from "./features/tmux-subagent"
+import { createTeammateRegistry, type TeammateRegistry } from "./features/teammates"
 import { registerManagerForCleanup } from "./features/background-agent/process-cleanup"
 import { createConfigHandler } from "./plugin-handlers"
 import { log } from "./shared"
@@ -37,6 +38,7 @@ export type Managers = {
   backgroundManager: BackgroundManager
   skillMcpManager: SkillMcpManager
   configHandler: ReturnType<typeof createConfigHandler>
+  teammateRegistry: TeammateRegistry
 }
 
 export function createManagers(args: {
@@ -107,10 +109,13 @@ export function createManagers(args: {
     modelCacheState,
   })
 
+  const teammateRegistry = createTeammateRegistry()
+
   return {
     tmuxSessionManager,
     backgroundManager,
     skillMcpManager,
     configHandler,
+    teammateRegistry,
   }
 }

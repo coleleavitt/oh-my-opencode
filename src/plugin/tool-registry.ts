@@ -105,7 +105,7 @@ export function trimToolsToCap(filteredTools: ToolsRecord, maxTools: number): vo
 export function createToolRegistry(args: {
   ctx: PluginContext
   pluginConfig: OhMyOpenCodeConfig
-  managers: Pick<Managers, "backgroundManager" | "tmuxSessionManager" | "skillMcpManager">
+  managers: Pick<Managers, "backgroundManager" | "tmuxSessionManager" | "skillMcpManager" | "teammateRegistry">
   skillContext: SkillContext
   availableCategories: AvailableCategory[]
   interactiveBashEnabled?: boolean
@@ -163,6 +163,8 @@ export function createToolRegistry(args: {
         },
       })
     },
+    teammateRegistry: managers.teammateRegistry,
+    teammatesConfig: pluginConfig.teammates,
   })
 
   const getSessionIDForMcp = (): string | undefined => getMainSessionID()

@@ -86,6 +86,8 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
   - subagent_type: Use specific agent directly (explore, librarian, oracle, metis, momus)
   - run_in_background: REQUIRED. true=async (returns task_id), false=sync (waits). Use background=true ONLY for parallel exploration with 5+ independent queries.
   - run_in_worktree: Optional. Run the delegated task inside a throwaway \`git worktree\` so the agent's mutations can't touch your working copy. Auto-cleans up if the agent produces no changes; if the agent makes commits or leaves a dirty tree, the branch + path are returned for you to review. Sync-only — ignored when run_in_background=true. Use when dispatching risky/experimental work you want to gate before merging.
+  - teammate: Optional. Register the spawned agent as a named teammate you can message again across turns via send_message_to_teammate. Requires teammate_name. Sync-only — ignored when run_in_background=true. Capacity: 5 per session by default; reusing a name rebinds without consuming a slot.
+  - teammate_name: Required with teammate=true. Stable short name you'll use to address the teammate later (e.g. "researcher", "reviewer").
   - session_id: Existing Task session to continue (from previous task output). Continues agent with FULL CONTEXT PRESERVED - saves tokens, maintains continuity.
   - command: The command that triggered this task (optional, for slash command tracking).
   
@@ -104,6 +106,8 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       prompt: tool.schema.string().describe("Full detailed prompt for the agent"),
       run_in_background: tool.schema.boolean().describe("REQUIRED. true=async (returns task_id), false=sync (waits). Use false for task delegation, true ONLY for parallel exploration."),
       run_in_worktree: tool.schema.boolean().optional().describe("Optional. Run the task in a throwaway `git worktree` so mutations can't touch your working copy. Auto-cleans up if no changes are made; surfaces branch+path if changes are made. Sync-only — ignored when run_in_background=true."),
+      teammate: tool.schema.boolean().optional().describe("Optional. Register the spawned agent as a named teammate you can continue messaging across turns via send_message_to_teammate. Requires teammate_name. Sync-only — ignored for run_in_background=true."),
+      teammate_name: tool.schema.string().optional().describe("Stable name for the teammate (e.g. 'researcher', 'reviewer'). Required when teammate=true. Reusing a name rebinds it to a fresh session; new names count toward the per-session cap (default 5)."),
       category: tool.schema.string().optional().describe(`REQUIRED if subagent_type not provided. Do NOT provide both category and subagent_type.`),
       subagent_type: tool.schema.string().optional().describe("REQUIRED if category not provided. Do NOT provide both category and subagent_type."),
       session_id: tool.schema.string().optional().describe("Existing Task session to continue"),
@@ -253,6 +257,40 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         availableSkills,
       })
 
+      // Teammate validation + capacity check (must happen after agentToUse
+      // is resolved but before any spawn).
+      const teammateRegistry = options.teammateRegistry
+      const teammatesCfg = options.teammatesConfig
+      const teammatesEnabled = teammatesCfg?.enabled !== false
+      const wantsTeammate = args.teammate === true
+      const teammateName = args.teammate_name?.trim()
+      const maxConcurrent = teammatesCfg?.max_concurrent ?? 5
+      const parentSessionID = parentContext.sessionID
+
+      if (wantsTeammate) {
+        if (!teammateName) {
+          return `Invalid arguments: teammate=true requires teammate_name. Pick a short stable name (e.g. "researcher") you can reuse in send_message_to_teammate.`
+        }
+        if (!teammatesEnabled || !teammateRegistry) {
+          return `Teammates feature is disabled by configuration. Set teammates.enabled=true in oh-my-openagent.jsonc or omit teammate=true.`
+        }
+        if (runInBackground) {
+          log("[task] teammate=true ignored for background task (v1 is sync-only)", {
+            agent: agentToUse,
+            teammateName,
+          })
+        } else {
+          const existing = teammateRegistry.get(parentSessionID, teammateName)
+          if (!existing) {
+            const currentCount = teammateRegistry.list(parentSessionID).length
+            if (currentCount >= maxConcurrent) {
+              const existingNames = teammateRegistry.list(parentSessionID).map((e) => e.name).join(", ")
+              return `Cannot register teammate "${teammateName}": already at capacity (${currentCount}/${maxConcurrent}) for this session. Current teammates: ${existingNames}. Dismiss one with dismiss_teammate, reuse an existing name, or raise teammates.max_concurrent in config.`
+            }
+          }
+        }
+      }
+
       if (runInBackground) {
         if (args.run_in_worktree) {
           log("[task] run_in_worktree ignored for background task (v1 is sync-only)", {
@@ -263,13 +301,40 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         return executeBackgroundTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, fallbackChain)
       }
 
+      // Sync-path teammate registration: wrap onSyncSessionCreated so
+      // the teammate entry is created as soon as the spawned session ID
+      // is known. Original callback (if any — e.g. tmux routing) still
+      // fires first.
+      const syncOptions: DelegateTaskToolOptions =
+        wantsTeammate && teammateName && teammateRegistry && teammatesEnabled
+          ? {
+              ...options,
+              onSyncSessionCreated: async (event) => {
+                if (options.onSyncSessionCreated) await options.onSyncSessionCreated(event)
+                const res = teammateRegistry.register({
+                  name: teammateName,
+                  sessionID: event.sessionID,
+                  agent: agentToUse,
+                  parentSessionID,
+                  maxConcurrent,
+                })
+                log("[task/teammate] registered", {
+                  kind: res.kind,
+                  name: teammateName,
+                  sessionID: event.sessionID,
+                  parentSessionID,
+                })
+              },
+            }
+          : options
+
       if (args.run_in_worktree) {
         const label = `${agentToUse}-${args.description}`
-        const { result, worktree } = await withWorktree(options.directory, label, async (worktreePath) => {
+        const { result, worktree } = await withWorktree(syncOptions.directory, label, async (worktreePath) => {
           return executeSyncTask(
             args,
             ctx,
-            { ...options, directory: worktreePath },
+            { ...syncOptions, directory: worktreePath },
             parentContext,
             agentToUse,
             categoryModel,
@@ -285,7 +350,7 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         return result
       }
 
-      return executeSyncTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, modelInfo, fallbackChain)
+      return executeSyncTask(args, ctx, syncOptions, parentContext, agentToUse, categoryModel, systemContent, modelInfo, fallbackChain)
     },
   })
 }
