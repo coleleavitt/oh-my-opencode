@@ -38,6 +38,7 @@ export { createCallOmoAgent } from "./call-omo-agent"
 export { createLookAt } from "./look-at"
 export { createDelegateTask } from "./delegate-task"
 export { createSendMessageToTeammate } from "./send-message-to-teammate"
+export { createListTeammates, createDismissTeammate } from "./teammate-admin"
 export {
   createTaskCreateTool,
   createTaskGetTool,

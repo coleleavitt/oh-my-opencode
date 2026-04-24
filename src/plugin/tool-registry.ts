@@ -21,6 +21,8 @@ import {
   createSessionManagerTools,
   createDelegateTask,
   createSendMessageToTeammate,
+  createListTeammates,
+  createDismissTeammate,
   discoverCommandsSync,
   interactive_bash,
   createTaskCreateTool,
@@ -178,6 +180,18 @@ export function createToolRegistry(args: {
     sisyphusAgentConfig: pluginConfig.sisyphus_agent,
   })
 
+  const listTeammates = createListTeammates({
+    client: ctx.client,
+    teammateRegistry: managers.teammateRegistry,
+    teammatesConfig: pluginConfig.teammates,
+  })
+
+  const dismissTeammate = createDismissTeammate({
+    client: ctx.client,
+    teammateRegistry: managers.teammateRegistry,
+    teammatesConfig: pluginConfig.teammates,
+  })
+
   const getSessionIDForMcp = (): string | undefined => getMainSessionID()
 
   const skillMcpTool = createSkillMcpTool({
@@ -233,6 +247,8 @@ export function createToolRegistry(args: {
     ...(lookAt ? { look_at: lookAt } : {}),
     task: delegateTask,
     send_message_to_teammate: sendMessageToTeammate,
+    list_teammates: listTeammates,
+    dismiss_teammate: dismissTeammate,
     skill_mcp: skillMcpTool,
     skill: skillTool,
     ...(interactiveBashEnabled ? { interactive_bash } : {}),
