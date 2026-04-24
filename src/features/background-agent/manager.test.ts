@@ -1587,7 +1587,12 @@ describe("BackgroundManager.tryCompleteTask", () => {
     expect(concurrencyManager.getCount(concurrencyKey)).toBe(0)
   })
 
-   test("should abort session on completion", async () => {
+   test("should NOT abort child session on normal completion (inspectability contract)", async () => {
+     // Normal task completion must leave the child session intact so the
+     // OpenCode TUI's ctrl+x-down navigation can still step into it for
+     // post-hoc inspection. Abort is reserved for real cancel/error paths.
+     // See manager.ts:1816 comment for full rationale; cc119 follows the
+     // same non-aborting-on-completion contract.
      // #given
      const abortedSessionIDs: string[] = []
      const client = {
@@ -1621,7 +1626,7 @@ describe("BackgroundManager.tryCompleteTask", () => {
     await tryCompleteTaskForTest(manager, task)
 
     // #then
-    expect(abortedSessionIDs).toEqual(["session-1"])
+    expect(abortedSessionIDs).toEqual([])
   })
 
   test("should clean pendingByParent even when promptAsync notification fails", async () => {

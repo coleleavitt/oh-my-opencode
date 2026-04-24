@@ -1814,9 +1814,19 @@ export class BackgroundManager {
     }
 
     if (task.sessionID) {
-      // Awaited to prevent dangling promise during subagent teardown (Bun/WebKit SIGABRT)
-      await this.abortSessionWithLogging(task.sessionID, `task completion (${source})`)
-
+      // NOTE: we deliberately do NOT abort the child session here on
+      // normal completion. Earlier versions aborted on every complete-
+      // task event for symmetry with the cancel/error paths, but that
+      // meant subagent sessions weren't reliably inspectable after they
+      // finished: `ctrl+x down` in the OpenCode TUI navigates via
+      // sync.data.session, and an aborted session can drop out of the
+      // live client view even though it's still persisted, producing
+      // the "I can see the Task entry in chat but can't step into it"
+      // UX. cc119 (cli.2.1.119.aligned.js) similarly never terminates
+      // subagent context on normal completion — it leaves sessions
+      // inspectable and evicts only on explicit cleanup. Abort is kept
+      // for cancel / error paths (see abortSessionWithLogging callers
+      // at manager.ts:453, :509, :541, :665, :953, :1701).
       SessionCategoryRegistry.remove(task.sessionID)
     }
 

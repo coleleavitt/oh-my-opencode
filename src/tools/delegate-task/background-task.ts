@@ -116,6 +116,22 @@ export async function executeBackgroundTask(
       await new Promise(resolve => setTimeout(resolve, timing.WAIT_FOR_SESSION_INTERVAL_MS))
     }
 
+    // Fail-fast when the manager could not create an OpenCode session
+    // within the wait budget. If we still have no sessionId and the task
+    // is still queued/pending, the dispatch effectively never started —
+    // something upstream (concurrency cap, stuck queue) is holding it.
+    // Returning success here produces the "0 toolcalls · 0ms" phantom
+    // Task in chat that the user can't step into via ctrl+x-down because
+    // no OpenCode session was ever created. Surface it as an error so
+    // the LLM knows the work didn't dispatch.
+    if (!sessionId && !ctx.abort?.aborted) {
+      const final = manager.getTask(task.id)
+      const status = final?.status
+      if (status === "pending") {
+        return `Background task never dispatched — the manager didn't create an OpenCode session within ${timing.WAIT_FOR_SESSION_TIMEOUT_MS}ms (task still ${status}). Likely blocked on concurrency or a stuck queue.\n\nTask ID: ${task.id}`
+      }
+    }
+
     if (sessionId) {
       setSessionFallbackChain(sessionId, fallbackChain)
     }
