@@ -48,6 +48,7 @@ import {
   isRecord,
 } from "./error-classifier"
 import { tryFallbackRetry } from "./fallback-retry-handler"
+import { normalizeAgentForPromptKey } from "../../shared/agent-display-names"
 import { registerManagerForCleanup, unregisterManagerForCleanup } from "./process-cleanup"
 import {
   findNearestMessageExcludingCompaction,
@@ -589,8 +590,14 @@ export class BackgroundManager {
       applySessionPromptParams(sessionID, input.model)
     }
 
+    // OpenCode's agent registry uses lowercase config keys. Display names
+    // ("Sisyphus-Junior", "Atlas - Plan Executor") used to silently route
+    // through isAgentNotFoundError → FALLBACK_AGENT ("general"), dispatching
+    // the wrong agent. Normalize here before any .prompt() body build.
+    const normalizedLaunchAgent = normalizeAgentForPromptKey(input.agent) ?? input.agent
+
     const promptBody = {
-      agent: input.agent,
+      agent: normalizedLaunchAgent,
       ...(launchModel ? { model: launchModel } : {}),
       ...(launchVariant ? { variant: launchVariant } : {}),
       system: input.skillContent,
@@ -599,7 +606,7 @@ export class BackgroundManager {
           task: false,
           call_omo_agent: true,
           question: false,
-          ...getAgentToolRestrictions(input.agent),
+          ...getAgentToolRestrictions(normalizedLaunchAgent),
         }
         setSessionTools(sessionID, tools)
         return tools
@@ -897,10 +904,17 @@ export class BackgroundManager {
       applySessionPromptParams(existingTask.sessionID!, existingTask.model)
     }
 
+    // Normalize to lowercase config key — see note on normalizedLaunchAgent
+    // above. existingTask.agent is whatever was registered at spawn time;
+    // if older tasks in-flight registered with a display name, the resume
+    // path needs to re-normalize defensively.
+    const normalizedResumeAgent =
+      normalizeAgentForPromptKey(existingTask.agent) ?? existingTask.agent
+
     this.client.session.promptAsync({
       path: { id: existingTask.sessionID },
       body: {
-        agent: existingTask.agent,
+        agent: normalizedResumeAgent,
         ...(resumeModel ? { model: resumeModel } : {}),
         ...(resumeVariant ? { variant: resumeVariant } : {}),
         tools: (() => {
@@ -908,7 +922,7 @@ export class BackgroundManager {
             task: false,
             call_omo_agent: true,
             question: false,
-            ...getAgentToolRestrictions(existingTask.agent),
+            ...getAgentToolRestrictions(normalizedResumeAgent),
           }
           setSessionTools(existingTask.sessionID!, tools)
           return tools

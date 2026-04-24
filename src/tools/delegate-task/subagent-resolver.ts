@@ -2,7 +2,7 @@ import type { DelegateTaskArgs } from "./types"
 import type { ExecutorContext } from "./executor-types"
 import type { DelegatedModelConfig } from "./types"
 import { isPlanFamily } from "./constants"
-import { SISYPHUS_JUNIOR_AGENT } from "./sisyphus-junior-agent"
+import { SISYPHUS_JUNIOR_AGENT, SISYPHUS_JUNIOR_DISPLAY } from "./sisyphus-junior-agent"
 import { normalizeModelFormat } from "../../shared/model-format-normalizer"
 import { AGENT_MODEL_REQUIREMENTS } from "../../shared/model-requirements"
 import { normalizeFallbackModels, flattenToFallbackModelStrings } from "../../shared/model-resolver"
@@ -56,7 +56,7 @@ export async function resolveSubagentExecution(
     return {
       agentToUse: "",
       categoryModel: undefined,
-      error: `Cannot use subagent_type="${SISYPHUS_JUNIOR_AGENT}" directly. Use category parameter instead (e.g., ${categoryExamples}).
+      error: `Cannot use subagent_type="${SISYPHUS_JUNIOR_DISPLAY}" directly. Use category parameter instead (e.g., ${categoryExamples}).
 
 Sisyphus-Junior is spawned automatically when you specify a category. Pick the appropriate category for your task domain.`,
     }

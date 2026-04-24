@@ -10,7 +10,7 @@ import { getSessionTools } from "../../shared/session-tools-store"
 import { SessionCategoryRegistry } from "../../shared/session-category-registry"
 import { QUESTION_DENIED_SESSION_PERMISSION } from "../../shared/question-denied-session-permission"
 import { setSessionFallbackChain } from "../../hooks/model-fallback/hook"
-import { stripAgentListSortPrefix } from "../../shared/agent-display-names"
+import { stripAgentListSortPrefix, normalizeAgentForPromptKey } from "../../shared/agent-display-names"
 
 function continueSessionSetup(args: {
   taskID: string
@@ -63,7 +63,12 @@ export async function executeBackgroundTask(
 
   try {
     const tddEnabled = executorCtx.sisyphusAgentConfig?.tdd
-    const normalizedAgent = stripAgentListSortPrefix(agentToUse)
+    // Normalize to the lowercase config key OpenCode's agent registry
+    // uses. Without this the background spawner's isAgentNotFoundError
+    // fallback silently landed display-name-dispatched sessions on the
+    // `general` subagent — see category-dispatched tasks routing to
+    // "general" instead of "sisyphus-junior".
+    const normalizedAgent = normalizeAgentForPromptKey(agentToUse) ?? stripAgentListSortPrefix(agentToUse)
     const effectivePrompt = buildTaskPrompt(args.prompt, normalizedAgent, tddEnabled)
     const task = await manager.launch({
       description: args.description,

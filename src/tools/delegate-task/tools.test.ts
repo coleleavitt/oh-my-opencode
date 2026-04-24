@@ -462,7 +462,7 @@ describe("sisyphus-task", () => {
        await tool.execute(args, toolContext)
 
        // then
-       expect(args.subagent_type).toBe("Sisyphus-Junior")
+       expect(args.subagent_type).toBe("sisyphus-junior")
     }, { timeout: 10000 })
 
     test("prefers category over subagent_type when both are provided", async () => {
@@ -520,7 +520,7 @@ describe("sisyphus-task", () => {
       await tool.execute(args, toolContext)
 
       //#then - category takes precedence, subagent_type is overridden to sisyphus-junior
-      expect(args.subagent_type).toBe("Sisyphus-Junior")
+      expect(args.subagent_type).toBe("sisyphus-junior")
     }, { timeout: 10000 })
 
     test("proceeds without error when systemDefaultModel is undefined", async () => {
@@ -1547,7 +1547,7 @@ describe("sisyphus-task", () => {
             id: "bg_explicit_true",
             sessionID: "ses_bg_explicit_true",
             description: "Explicit true",
-            agent: "Sisyphus-Junior",
+            agent: "sisyphus-junior",
             status: "running",
           }
         },
@@ -1600,14 +1600,14 @@ describe("sisyphus-task", () => {
                 id: "bg_tool_first",
                 sessionID: undefined,
                 description: "Tool first",
-                agent: "Sisyphus-Junior",
+                agent: "sisyphus-junior",
                 status: "running",
               }
             : {
                 id: "bg_tool_second",
                 sessionID: undefined,
                 description: "Tool second",
-                agent: "Sisyphus-Junior",
+                agent: "sisyphus-junior",
                 status: "running",
               }
         },
@@ -4241,7 +4241,7 @@ describe("sisyphus-task", () => {
       )
 
       // then - title should follow OpenCode format
-      expect(createBody.title).toBe("Implement feature X (@Sisyphus-Junior subagent)")
+      expect(createBody.title).toBe("Implement feature X (@sisyphus-junior subagent)")
     }, { timeout: 10000 })
 
     test("sync task output includes <task_metadata> block with session_id", async () => {

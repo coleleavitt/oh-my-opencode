@@ -11,6 +11,7 @@ import { getAgentToolRestrictions } from "../../shared/agent-tool-restrictions"
 import { applySessionPromptParams } from "../../shared/session-prompt-params-helpers"
 import { setSessionTools } from "../../shared/session-tools-store"
 import { createInternalAgentTextPart } from "../../shared/internal-initiator-marker"
+import { normalizeAgentForPromptKey } from "../../shared/agent-display-names"
 
 type SendSyncPromptDeps = {
   promptWithModelSuggestionRetry: typeof promptWithModelSuggestionRetry
@@ -77,10 +78,18 @@ export async function sendSyncPrompt(
 
   applySessionPromptParams(input.sessionID, input.categoryModel)
 
+  // Normalize to the lowercase config key OpenCode's agent registry uses.
+  // The internal agentToUse may be a display name ("Sisyphus-Junior",
+  // "Atlas - Plan Executor") or a ZWSP-prefixed sort variant; only the
+  // config key ("sisyphus-junior", "atlas") resolves via
+  // agents.get(input.agent) at the OpenCode server. Sending a display name
+  // used to silently land the session on the 'general' fallback agent.
+  const normalizedAgent = normalizeAgentForPromptKey(input.agentToUse) ?? input.agentToUse
+
   const promptArgs = {
     path: { id: input.sessionID },
     body: {
-      agent: input.agentToUse.replace(/^\u200B+/, ""),
+      agent: normalizedAgent,
       system: input.systemContent,
       tools,
       parts: [createInternalAgentTextPart(effectivePrompt)],

@@ -9,10 +9,16 @@ import { formatFullSession } from "./full-session-format"
 import { formatTaskResult } from "./task-result-format"
 import { formatTaskStatus } from "./task-status-format"
 
-import { getAgentDisplayName } from "../../shared/agent-display-names"
+import { normalizeAgentForPromptKey } from "../../shared/agent-display-names"
 import { recordBackgroundOutputConsumption } from "../../shared/background-output-consumption"
 
-const SISYPHUS_JUNIOR_AGENT = getAgentDisplayName("sisyphus-junior")
+/**
+ * Match the canonical config key, NOT the display name — task.agent is now
+ * normalized to the config key when the background manager stores it,
+ * otherwise a sisyphus-junior task registered under the display name
+ * "Sisyphus-Junior" would fail this equality check.
+ */
+const SISYPHUS_JUNIOR_AGENT_KEY = "sisyphus-junior"
 
 type ToolContextWithMetadata = {
   sessionID: string
@@ -31,7 +37,10 @@ function resolveToolCallID(ctx: ToolContextWithMetadata): string | undefined {
 }
 
 function formatResolvedTitle(task: BackgroundTask): string {
-  const label = task.agent === SISYPHUS_JUNIOR_AGENT && task.category ? task.category : task.agent
+  // Normalize both sides in case an older in-flight task was registered
+  // under a display name before the normalize-at-API-boundary fix landed.
+  const normalizedAgent = normalizeAgentForPromptKey(task.agent) ?? task.agent
+  const label = normalizedAgent === SISYPHUS_JUNIOR_AGENT_KEY && task.category ? task.category : task.agent
   return `${label} - ${task.description}`
 }
 

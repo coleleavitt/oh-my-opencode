@@ -24,7 +24,10 @@ describe("background-agent spawner agent-not-found fallback", () => {
           callCount++
           promptCalls.push({ body: { ...args.body }, path: { ...args.path } })
           if (callCount === 1) {
-            throw new Error('Agent not found: "Sisyphus-Junior". Available agents: build, explore, general, plan')
+            // Simulate the stubbed server rejecting even the normalized
+            // key — covers the scenario where the custom agent is gone
+            // (e.g. model switch, config reload) and fallback should fire.
+            throw new Error('Agent not found: "sisyphus-junior". Available agents: build, explore, general, plan')
           }
           return { data: {} }
         },
@@ -70,9 +73,12 @@ describe("background-agent spawner agent-not-found fallback", () => {
     await new Promise(resolve => setTimeout(resolve, 50))
 
     //#then
-    // Should have called promptAsync twice: once with original agent, once with fallback
+    // Should have called promptAsync twice: once with the normalized
+    // lowercase config key (even though the input was the display name
+    // "Sisyphus-Junior"), once with the fallback agent when the first
+    // dispatch errored.
     expect(promptCalls).toHaveLength(2)
-    expect(promptCalls[0].body.agent).toBe("Sisyphus-Junior")
+    expect(promptCalls[0].body.agent).toBe("sisyphus-junior")
     expect(promptCalls[1].body.agent).toBe("general")
     // Original prompt content preserved in fallback
     expect(promptCalls[1].body.parts).toEqual(promptCalls[0].body.parts)
@@ -151,7 +157,7 @@ describe("background-agent spawner agent-not-found fallback", () => {
         create: async () => ({ data: { id: "session-fallback" } }),
         promptAsync: async () => {
           callCount++
-          throw new Error('Agent not found: "Sisyphus-Junior". Available agents: build, explore, general, plan')
+          throw new Error('Agent not found: "sisyphus-junior". Available agents: build, explore, general, plan')
         },
       },
     } as any
@@ -253,7 +259,7 @@ describe("background-agent spawner agent-not-found fallback", () => {
 
     //#then
     expect(promptCalls).toHaveLength(2)
-    expect(promptCalls[0].body.agent).toBe("Sisyphus-Junior")
+    expect(promptCalls[0].body.agent).toBe("sisyphus-junior")
     expect(promptCalls[1].body.agent).toBe("general")
     expect(onTaskError).not.toHaveBeenCalled()
   })
