@@ -20,6 +20,7 @@ import {
   executeBackgroundTask,
   executeSyncTask,
 } from "./executor"
+import { withWorktree } from "./worktree"
 
 export { resolveCategoryConfig } from "./categories"
 export type { SyncSessionCreatedEvent, DelegateTaskToolOptions, BuildSystemContentInput } from "./types"
@@ -84,6 +85,7 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
   ${categoryList}
   - subagent_type: Use specific agent directly (explore, librarian, oracle, metis, momus)
   - run_in_background: REQUIRED. true=async (returns task_id), false=sync (waits). Use background=true ONLY for parallel exploration with 5+ independent queries.
+  - run_in_worktree: Optional. Run the delegated task inside a throwaway \`git worktree\` so the agent's mutations can't touch your working copy. Auto-cleans up if the agent produces no changes; if the agent makes commits or leaves a dirty tree, the branch + path are returned for you to review. Sync-only — ignored when run_in_background=true. Use when dispatching risky/experimental work you want to gate before merging.
   - session_id: Existing Task session to continue (from previous task output). Continues agent with FULL CONTEXT PRESERVED - saves tokens, maintains continuity.
   - command: The command that triggered this task (optional, for slash command tracking).
   
@@ -101,6 +103,7 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       description: tool.schema.string().optional().describe("Short task description (3-5 words). Auto-generated from prompt if omitted."),
       prompt: tool.schema.string().describe("Full detailed prompt for the agent"),
       run_in_background: tool.schema.boolean().describe("REQUIRED. true=async (returns task_id), false=sync (waits). Use false for task delegation, true ONLY for parallel exploration."),
+      run_in_worktree: tool.schema.boolean().optional().describe("Optional. Run the task in a throwaway `git worktree` so mutations can't touch your working copy. Auto-cleans up if no changes are made; surfaces branch+path if changes are made. Sync-only — ignored when run_in_background=true."),
       category: tool.schema.string().optional().describe(`REQUIRED if subagent_type not provided. Do NOT provide both category and subagent_type.`),
       subagent_type: tool.schema.string().optional().describe("REQUIRED if category not provided. Do NOT provide both category and subagent_type."),
       session_id: tool.schema.string().optional().describe("Existing Task session to continue"),
@@ -251,7 +254,35 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       })
 
       if (runInBackground) {
+        if (args.run_in_worktree) {
+          log("[task] run_in_worktree ignored for background task (v1 is sync-only)", {
+            agent: agentToUse,
+            description: args.description,
+          })
+        }
         return executeBackgroundTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, fallbackChain)
+      }
+
+      if (args.run_in_worktree) {
+        const label = `${agentToUse}-${args.description}`
+        const { result, worktree } = await withWorktree(options.directory, label, async (worktreePath) => {
+          return executeSyncTask(
+            args,
+            ctx,
+            { ...options, directory: worktreePath },
+            parentContext,
+            agentToUse,
+            categoryModel,
+            systemContent,
+            modelInfo,
+            fallbackChain,
+          )
+        })
+        if (worktree.hasChanges) {
+          const header = `\n\n[worktree isolation] Agent produced changes.\n  branch: ${worktree.branch}\n  path:   ${worktree.worktreePath}\nReview, cherry-pick, or \`git worktree remove ${worktree.worktreePath}\` to discard.\n`
+          return typeof result === "string" ? `${result}${header}` : result
+        }
+        return result
       }
 
       return executeSyncTask(args, ctx, options, parentContext, agentToUse, categoryModel, systemContent, modelInfo, fallbackChain)

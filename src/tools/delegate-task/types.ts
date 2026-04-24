@@ -14,6 +14,14 @@ export interface DelegateTaskArgs {
   category?: string
   subagent_type?: string
   run_in_background: boolean
+  /**
+   * Run the delegated task inside a throwaway `git worktree`-backed branch
+   * so mutations can't touch the parent's working copy. Sync-only in v1.
+   * If the task produces no changes, the worktree is auto-removed; if it
+   * produces changes (commits or dirty tree), the path + branch are
+   * surfaced to the parent in the tool result.
+   */
+  run_in_worktree?: boolean
   session_id?: string
   command?: string
   load_skills: string[]
