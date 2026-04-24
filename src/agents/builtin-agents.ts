@@ -1,6 +1,7 @@
 import type { AgentConfig } from "@opencode-ai/sdk";
 import type {
   BuiltinAgentName,
+  GeneralSubagentName,
   AgentOverrides,
   AgentFactory,
   AgentPromptMetadata,
@@ -8,7 +9,6 @@ import type {
 import type { CategoriesConfig, GitMasterConfig } from "../config/schema";
 import type { LoadedSkill } from "../features/opencode-skill-loader/types";
 import type { BrowserAutomationProvider } from "../config/schema";
-import { createSisyphusAgent } from "./sisyphus";
 import { createOracleAgent, ORACLE_PROMPT_METADATA } from "./oracle";
 import { createLibrarianAgent, LIBRARIAN_PROMPT_METADATA } from "./librarian";
 import { createExploreAgent, EXPLORE_PROMPT_METADATA } from "./explore";
@@ -17,12 +17,14 @@ import {
   MULTIMODAL_LOOKER_PROMPT_METADATA,
 } from "./multimodal-looker";
 import { createMetisAgent, metisPromptMetadata } from "./metis";
-import { createAtlasAgent, atlasPromptMetadata } from "./atlas";
+import { atlasPromptMetadata } from "./atlas";
 import { createMomusAgent, momusPromptMetadata } from "./momus";
 import { createArgusAgent, ARGUS_PROMPT_METADATA } from "./argus";
 import { createForkAgent, FORK_PROMPT_METADATA } from "./fork-agent";
-import { createHephaestusAgent } from "./hephaestus";
-import { createSisyphusJuniorAgentWithOverrides } from "./sisyphus-junior";
+// Primary agent factories (createSisyphusAgent, createHephaestusAgent,
+// createAtlasAgent, createSisyphusJuniorAgentWithOverrides) are imported
+// directly by their dedicated maybeCreate*Config builders — they don't
+// participate in the generic agentSources loop.
 import type { AvailableCategory } from "./dynamic-agent-prompt-builder";
 import {
   fetchAvailableModels,
@@ -39,20 +41,22 @@ import { maybeCreateAtlasConfig } from "./builtin-agents/atlas-agent";
 
 type AgentSource = AgentFactory | AgentConfig;
 
-const agentSources: Record<BuiltinAgentName, AgentSource> = {
-  sisyphus: createSisyphusAgent,
-  hephaestus: createHephaestusAgent,
+// agentSources holds only the general-subagent factories iterated by
+// collectPendingBuiltinAgents. The 4 primary-ish agents (sisyphus,
+// hephaestus, atlas, sisyphus-junior) have dedicated maybeCreate*Config
+// builders that take richer context than a model string, so they don't
+// belong in this record — keeping them here previously required unsafe
+// casts (`as AgentFactory`, `as unknown as AgentFactory`) and 4
+// matching `continue` lines in general-agents.ts. Both gone now.
+const agentSources: Record<GeneralSubagentName, AgentSource> = {
   oracle: createOracleAgent,
   librarian: createLibrarianAgent,
   explore: createExploreAgent,
   "multimodal-looker": createMultimodalLookerAgent,
   metis: createMetisAgent,
   momus: createMomusAgent,
-  // Note: Atlas is handled specially in createBuiltinAgents()
-  // because it needs OrchestratorContext, not just a model string
-  atlas: createAtlasAgent as AgentFactory,
-  "sisyphus-junior":
-    createSisyphusJuniorAgentWithOverrides as unknown as AgentFactory,
+  // code-reviewer is an intentional alias of argus — both names are
+  // user-callable delegation targets and share the factory + metadata.
   "code-reviewer": createArgusAgent,
   argus: createArgusAgent,
   fork: createForkAgent,

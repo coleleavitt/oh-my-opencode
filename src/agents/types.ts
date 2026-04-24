@@ -116,20 +116,29 @@ export function isGeminiModel(model: string): boolean {
   return modelName.startsWith("gemini-");
 }
 
-export type BuiltinAgentName =
+/** Agents with dedicated maybeCreate*Config builders (not dispatched through
+ * the generic agentSources loop). Kept as a named subset so agentSources can
+ * be narrowed without special-casing this set by hand in 3 places. */
+export type PrimaryBuiltinAgentName =
   | "sisyphus"
   | "hephaestus"
+  | "atlas"
+  | "sisyphus-junior";
+
+/** Agents dispatched through the generic buildAgent(model) path in
+ * collectPendingBuiltinAgents. */
+export type GeneralSubagentName =
   | "oracle"
   | "librarian"
   | "explore"
   | "multimodal-looker"
   | "metis"
   | "momus"
-  | "atlas"
-  | "sisyphus-junior"
   | "code-reviewer"
   | "argus"
   | "fork";
+
+export type BuiltinAgentName = PrimaryBuiltinAgentName | GeneralSubagentName;
 
 export type OverridableAgentName = "build" | BuiltinAgentName;
 

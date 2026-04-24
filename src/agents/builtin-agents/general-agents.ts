@@ -1,5 +1,5 @@
 import type { AgentConfig } from "@opencode-ai/sdk"
-import type { BuiltinAgentName, AgentOverrides, AgentPromptMetadata } from "../types"
+import type { BuiltinAgentName, GeneralSubagentName, AgentOverrides, AgentPromptMetadata } from "../types"
 import type { CategoryConfig, GitMasterConfig } from "../../config/schema"
 import type { BrowserAutomationProvider } from "../../config/schema"
 import type { AvailableAgent } from "../dynamic-agent-prompt-builder"
@@ -11,7 +11,7 @@ import { applyModelResolution, getFirstFallbackModel } from "./model-resolution"
 import { log } from "../../shared/logger"
 
 export function collectPendingBuiltinAgents(input: {
-  agentSources: Record<BuiltinAgentName, import("../agent-builder").AgentSource>
+  agentSources: Record<GeneralSubagentName, import("../agent-builder").AgentSource>
   agentMetadata: Partial<Record<BuiltinAgentName, AgentPromptMetadata>>
   disabledAgents: string[]
   agentOverrides: AgentOverrides
@@ -48,12 +48,11 @@ export function collectPendingBuiltinAgents(input: {
   const pendingAgentConfigs: Map<string, AgentConfig> = new Map()
 
   for (const [name, source] of Object.entries(agentSources)) {
-    const agentName = name as BuiltinAgentName
+    const agentName = name as GeneralSubagentName
 
-    if (agentName === "sisyphus") continue
-    if (agentName === "hephaestus") continue
-    if (agentName === "atlas") continue
-    if (agentName === "sisyphus-junior") continue
+    // Primary agents (sisyphus/hephaestus/atlas/sisyphus-junior) aren't in
+    // agentSources anymore — dedicated maybeCreate*Config builders handle
+    // them. No skip list needed here.
     if (disabledAgents.some((name) => name.toLowerCase() === agentName.toLowerCase())) continue
 
     const override = agentOverrides[agentName]
