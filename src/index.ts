@@ -84,6 +84,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     modelCacheState,
     backgroundManager: managers.backgroundManager,
     skillMcpManager: managers.skillMcpManager,
+    teammateRegistry: managers.teammateRegistry,
     isHookEnabled,
     safeHookEnabled,
     mergedSkills: toolsResult.mergedSkills,

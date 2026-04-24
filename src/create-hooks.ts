@@ -3,6 +3,7 @@ import type { HookName, OhMyOpenCodeConfig } from "./config"
 import type { LoadedSkill } from "./features/opencode-skill-loader/types"
 import type { BackgroundManager } from "./features/background-agent"
 import type { SkillMcpManager } from "./features/skill-mcp-manager"
+import type { TeammateRegistry } from "./features/teammates"
 import type { PluginContext } from "./plugin/types"
 import type { ModelCacheState } from "./plugin-state"
 
@@ -38,6 +39,7 @@ export function createHooks(args: {
   modelCacheState: ModelCacheState
   backgroundManager: BackgroundManager
   skillMcpManager: SkillMcpManager
+  teammateRegistry?: TeammateRegistry
   isHookEnabled: (hookName: HookName) => boolean
   safeHookEnabled: boolean
   mergedSkills: LoadedSkill[]
@@ -49,6 +51,7 @@ export function createHooks(args: {
     modelCacheState,
     backgroundManager,
     skillMcpManager: _skillMcpManager,
+    teammateRegistry,
     isHookEnabled,
     safeHookEnabled,
     mergedSkills,
@@ -62,6 +65,7 @@ export function createHooks(args: {
     isHookEnabled,
     safeHookEnabled,
     backgroundManager,
+    teammateRegistry,
   })
 
   const continuation = createContinuationHooks({

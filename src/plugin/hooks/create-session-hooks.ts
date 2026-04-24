@@ -1,5 +1,6 @@
 import type { OhMyOpenCodeConfig, HookName } from "../../config";
 import type { BackgroundManager } from "../../features/background-agent";
+import type { TeammateRegistry } from "../../features/teammates";
 import type { ModelCacheState } from "../../plugin-state";
 import type { PluginContext } from "../types";
 
@@ -34,6 +35,7 @@ import {
   createStatusLineHook,
   createAutoMemoryHook,
   createFileChangedHook,
+  createTeammatesCleanupHook,
 } from "../../hooks";
 import { createAnthropicEffortHook } from "../../hooks/anthropic-effort";
 import {
@@ -90,6 +92,7 @@ export type SessionHooks = {
   statusLine: ReturnType<typeof createStatusLineHook> | null;
   autoMemory: ReturnType<typeof createAutoMemoryHook> | null;
   fileChanged: ReturnType<typeof createFileChangedHook> | null;
+  teammatesCleanup: ReturnType<typeof createTeammatesCleanupHook> | null;
 };
 
 export function createSessionHooks(args: {
@@ -99,6 +102,7 @@ export function createSessionHooks(args: {
   isHookEnabled: (hookName: HookName) => boolean;
   safeHookEnabled: boolean;
   backgroundManager: BackgroundManager;
+  teammateRegistry?: TeammateRegistry;
 }): SessionHooks {
   const {
     ctx,
@@ -107,6 +111,7 @@ export function createSessionHooks(args: {
     isHookEnabled,
     safeHookEnabled,
     backgroundManager,
+    teammateRegistry,
   } = args;
   const safeHook = <T>(hookName: HookName, factory: () => T): T | null =>
     safeCreateHook(hookName, factory, { enabled: safeHookEnabled });
@@ -381,6 +386,11 @@ export function createSessionHooks(args: {
       ? safeHook("file-changed", () => createFileChangedHook(ctx, pluginConfig))
       : null;
 
+  const teammatesCleanup =
+    isHookEnabled("teammates-cleanup") && teammateRegistry
+      ? safeHook("teammates-cleanup", () => createTeammatesCleanupHook(teammateRegistry))
+      : null;
+
   return {
     contextWindowMonitor,
     preemptiveCompaction,
@@ -413,5 +423,6 @@ export function createSessionHooks(args: {
     statusLine,
     autoMemory,
     fileChanged,
+    teammatesCleanup,
   };
 }

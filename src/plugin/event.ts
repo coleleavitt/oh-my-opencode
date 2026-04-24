@@ -415,6 +415,11 @@ export function createEventHandler(args: {
       hooks.cwdChanged?.event,
       input,
     );
+    await runEventHookSafely(
+      "teammatesCleanup",
+      hooks.teammatesCleanup?.event,
+      input,
+    );
   };
 
   const recentSyntheticIdles = new Map<string, number>();
