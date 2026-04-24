@@ -61,10 +61,7 @@
           "start-work",
           "stop-continuation",
           "remove-ai-slops",
-          "security-review",
-          "parity",
-          "roadmap",
-          "philosophy"
+          "security-review"
         ]
       }
     },

@@ -3,6 +3,7 @@ import { PROMETHEUS_INTERVIEW_MODE } from "./interview-mode"
 import { PROMETHEUS_PLAN_GENERATION } from "./plan-generation"
 import { PROMETHEUS_HIGH_ACCURACY_MODE } from "./high-accuracy-mode"
 import { PROMETHEUS_PLAN_TEMPLATE } from "./plan-template"
+import { PROMETHEUS_DOCUMENT_FORMATS } from "./document-formats"
 import { PROMETHEUS_BEHAVIORAL_SUMMARY } from "./behavioral-summary"
 import { getGptPrometheusPrompt } from "./gpt"
 import { getGeminiPrometheusPrompt } from "./gemini"
@@ -11,12 +12,21 @@ import { isGptModel, isGeminiModel } from "../types"
 /**
  * Combined Prometheus system prompt (Claude-optimized, default).
  * Assembled from modular sections for maintainability.
+ *
+ * Section order matters: identity → interview mode → plan generation →
+ * high-accuracy mode → plan template → document formats (long-lived
+ * artifacts beyond the plan file) → behavioral summary (final
+ * constraints / clearance checklist). Document formats sit after the
+ * plan template because they're normative output guidance; the
+ * behavioral summary runs last so its clearance gate applies to
+ * every section above it.
  */
 export const PROMETHEUS_SYSTEM_PROMPT = `${PROMETHEUS_IDENTITY_CONSTRAINTS}
 ${PROMETHEUS_INTERVIEW_MODE}
 ${PROMETHEUS_PLAN_GENERATION}
 ${PROMETHEUS_HIGH_ACCURACY_MODE}
 ${PROMETHEUS_PLAN_TEMPLATE}
+${PROMETHEUS_DOCUMENT_FORMATS}
 ${PROMETHEUS_BEHAVIORAL_SUMMARY}`
 
 /**
