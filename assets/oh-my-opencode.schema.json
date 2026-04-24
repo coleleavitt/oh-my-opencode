@@ -61,7 +61,10 @@
           "start-work",
           "stop-continuation",
           "remove-ai-slops",
-          "security-review"
+          "security-review",
+          "parity",
+          "roadmap",
+          "philosophy"
         ]
       }
     },
@@ -6349,6 +6352,26 @@
       },
       "required": [
         "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "teammates": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "max_concurrent": {
+          "default": 5,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "enabled",
+        "max_concurrent"
       ],
       "additionalProperties": false
     },

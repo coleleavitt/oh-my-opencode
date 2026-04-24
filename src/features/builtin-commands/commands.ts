@@ -14,6 +14,9 @@ import { HANDOFF_TEMPLATE } from "./templates/handoff";
 import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review";
 import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops";
 import { SECURITY_REVIEW_TEMPLATE } from "./templates/security-review";
+import { PARITY_TEMPLATE } from "./templates/parity";
+import { ROADMAP_TEMPLATE } from "./templates/roadmap";
+import { PHILOSOPHY_TEMPLATE } from "./templates/philosophy";
 
 export interface LoadBuiltinCommandsOptions {
   useRegisteredAgents?: boolean;
@@ -174,6 +177,42 @@ Timestamp: $TIMESTAMP
 $ARGUMENTS
 </user-request>`,
       argumentHint: "[goal]",
+    },
+    "parity": {
+      description:
+        "(builtin) Generate or update a PARITY.md in the evidence-driven lane-tracking format (commit hashes, LOC counts, checkboxes)",
+      template: `<command-instruction>
+${PARITY_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+      argumentHint: "[project-name]",
+    },
+    "roadmap": {
+      description:
+        "(builtin) Generate or update a ROADMAP.md in the phased stable-decimal-ID format (Phase N → item N.M with Problem/Proposed/Acceptance/Status)",
+      template: `<command-instruction>
+${ROADMAP_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+      argumentHint: "[project-name]",
+    },
+    "philosophy": {
+      description:
+        "(builtin) Generate or update a PHILOSOPHY.md in the narrative three/four-part format (Stop Staring / Interface / Structure / Bottleneck / Demonstrates / Still Matters / Short Version)",
+      template: `<command-instruction>
+${PHILOSOPHY_TEMPLATE}
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+      argumentHint: "[project-name]",
     },
   };
 }
