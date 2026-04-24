@@ -6,6 +6,7 @@ import {
 } from "../shared/context-limit-resolver"
 
 import { resolveCompactionModel } from "./shared/compaction-model-resolver"
+import { createRapidRefillBreaker } from "./shared/rapid-refill-breaker"
 import { createPostCompactionDegradationMonitor } from "./preemptive-compaction-degradation-monitor"
 
 const PREEMPTIVE_COMPACTION_TIMEOUT_MS = 60_000
@@ -86,6 +87,7 @@ export function createPreemptiveCompactionHook(
   const compactedSessions = new Set<string>()
   const lastCompactionTime = new Map<string, number>()
   const tokenCache = new Map<string, CachedCompactionState>()
+  const rapidRefillBreaker = createRapidRefillBreaker()
 
   const postCompactionMonitor = createPostCompactionDegradationMonitor({
     client: ctx.client,
@@ -127,6 +129,28 @@ export function createPreemptiveCompactionHook(
     const threshold = getCompactThreshold(actualLimit)
     if (usageRatio < threshold || !cached.modelID) return
 
+    const breakerDecision = rapidRefillBreaker.shouldAllowCompact(sessionID)
+    if (!breakerDecision.allowed) {
+      log("[preemptive-compaction] Rapid-refill breaker tripped — skipping auto-compaction for this session", {
+        sessionID,
+        refills: breakerDecision.refills,
+      })
+      ctx.client.tui.showToast({
+        body: {
+          title: "Auto-compaction paused",
+          message: `Context refilled past ${Math.round(threshold * 100)}% within a few turns on ${breakerDecision.refills} consecutive compactions. Auto-compaction is disabled for this session — run /compact manually if you want to continue compacting.`,
+          variant: "warning",
+          duration: 10000,
+        },
+      }).catch((toastError: unknown) => {
+        log("[preemptive-compaction] Failed to show breaker toast", {
+          sessionID,
+          toastError: String(toastError),
+        })
+      })
+      return
+    }
+
     compactionInProgress.add(sessionID)
     lastCompactionTime.set(sessionID, Date.now())
 
@@ -149,6 +173,7 @@ export function createPreemptiveCompactionHook(
       )
 
       compactedSessions.add(sessionID)
+      rapidRefillBreaker.recordSuccessfulCompact(sessionID)
     } catch (error) {
       log("[preemptive-compaction] Compaction failed", {
         sessionID,
@@ -184,6 +209,7 @@ export function createPreemptiveCompactionHook(
         compactedSessions.delete(sessionID)
         lastCompactionTime.delete(sessionID)
         tokenCache.delete(sessionID)
+        rapidRefillBreaker.clearSession(sessionID)
         postCompactionMonitor.clear(sessionID)
       }
       return
@@ -219,6 +245,7 @@ export function createPreemptiveCompactionHook(
         })
       }
       compactedSessions.delete(info.sessionID)
+      rapidRefillBreaker.recordAssistantTurn(info.sessionID)
 
       await postCompactionMonitor.onAssistantMessageUpdated({
         sessionID: info.sessionID,
