@@ -21,6 +21,7 @@ import {
   createPermissionRequestHook,
   createPermissionDeniedHook,
   createCwdChangedHook,
+  createDestructiveBashGuardHook,
 } from "../../hooks"
 import {
   getOpenCodeVersion,
@@ -49,6 +50,7 @@ export type ToolGuardHooks = {
   todoDescriptionOverride: ReturnType<typeof createTodoDescriptionOverrideHook> | null
   webfetchRedirectGuard: ReturnType<typeof createWebFetchRedirectGuardHook> | null
   cwdChanged: ReturnType<typeof createCwdChangedHook> | null
+  destructiveBashGuard: ReturnType<typeof createDestructiveBashGuardHook> | null
 }
 
 export function createToolGuardHooks(args: {
@@ -161,6 +163,15 @@ export function createToolGuardHooks(args: {
       ? safeHook("cwd-changed", () => createCwdChangedHook(ctx, pluginConfig))
       : null
 
+  // Heuristic guard on destructive bash commands — fires BEFORE tool
+  // execution. Shares regex rules with safety-handoff-classifier so
+  // one ruleset applies pre- and post-completion. Enabled by default
+  // (HookNameSchema gate); disable via disabled_hooks if it misfires
+  // for your workflow.
+  const destructiveBashGuard = isHookEnabled("destructive-bash-guard")
+    ? safeHook("destructive-bash-guard", () => createDestructiveBashGuardHook())
+    : null
+
   return {
     argusAutoReview,
     permissionRequest,
@@ -180,5 +191,6 @@ export function createToolGuardHooks(args: {
     todoDescriptionOverride,
     webfetchRedirectGuard,
     cwdChanged,
+    destructiveBashGuard,
   }
 }

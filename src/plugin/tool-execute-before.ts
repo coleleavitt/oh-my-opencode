@@ -61,6 +61,10 @@ export function createToolExecuteBeforeHandler(args: {
       }
     }
 
+    // Destructive-bash guard fires first — if a known-dangerous bash
+    // command matches, throw before any other hook runs or any rule
+    // is checked. Cheap heuristic, no side effects on mismatch.
+    await hooks.destructiveBashGuard?.["tool.execute.before"]?.(input, output)
     await hooks.permissionRequest?.["tool.execute.before"]?.(input, output)
     await hooks.argusAutoReview?.["tool.execute.before"]?.(input, output)
     await hooks.writeExistingFileGuard?.["tool.execute.before"]?.(input, output)

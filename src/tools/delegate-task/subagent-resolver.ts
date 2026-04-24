@@ -15,6 +15,7 @@ import type { FallbackEntry } from "../../shared/model-requirements"
 import { resolveModelForDelegateTask } from "./model-selection"
 import { fuzzyMatchModel } from "../../shared/model-availability"
 import type { CategoryConfig } from "../../config/schema"
+import { getAgentRequiredMcpServers } from "../../agents/agent-capabilities"
 
 type AgentMode = "subagent" | "primary" | "all" | undefined
 
@@ -110,6 +111,38 @@ Create the work plan directly - that's your job as the planning agent.`,
     agentToUse = matchedAgent.name
 
     const agentConfigKey = getAgentConfigKey(agentToUse)
+
+    // MCP-required pre-flight: if the agent declares MCP servers it
+    // needs (e.g. multimodal-looker → "playwright"), check the live
+    // connection status and error out early if any are missing.
+    // Without this check the task spawns, starts running, hits its
+    // first MCP tool call, fails with a cryptic "tool not found",
+    // and the user sees a dead subagent. Fault-tolerant: if the
+    // status call itself fails (SDK error, server not reachable),
+    // skip the check rather than blocking dispatch.
+    const requiredMcpServers = getAgentRequiredMcpServers(agentConfigKey)
+    if (requiredMcpServers.length > 0) {
+      try {
+        const statusResp = await client.mcp.status({})
+        const status = (statusResp.data ?? {}) as Record<string, { status: string }>
+        const missing = requiredMcpServers.filter((name) => status[name]?.status !== "connected")
+        if (missing.length > 0) {
+          const details = missing.map((name) => `${name}=${status[name]?.status ?? "unknown"}`).join(", ")
+          return {
+            agentToUse: "",
+            categoryModel: undefined,
+            error: `Agent "${agentToUse}" requires MCP server(s) [${requiredMcpServers.join(", ")}] to be connected, but the following are not reachable: ${details}. Connect them (e.g. via the /mcp dialog) or delegate to a different agent.`,
+          }
+        }
+      } catch (err) {
+        log("[task/resolver] mcp.status pre-flight failed; skipping requiredMcpServers check", {
+          agent: agentToUse,
+          required: requiredMcpServers,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
     const agentOverride = agentOverrides?.[agentConfigKey as keyof typeof agentOverrides]
       ?? (agentOverrides ? Object.entries(agentOverrides).find(([key]) => key.toLowerCase() === agentConfigKey)?.[1] : undefined)
     const agentRequirement = AGENT_MODEL_REQUIREMENTS[agentConfigKey]

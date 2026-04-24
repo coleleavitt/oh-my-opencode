@@ -1,0 +1,1 @@
+export { createDestructiveBashGuardHook } from "./hook"

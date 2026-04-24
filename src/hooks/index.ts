@@ -112,3 +112,4 @@ export { createAutoMemoryHook } from "./auto-memory";
 export { createFileChangedHook } from "./file-changed";
 export { createCwdChangedHook } from "./cwd-changed";
 export { createTeammatesCleanupHook } from "./teammates-cleanup";
+export { createDestructiveBashGuardHook } from "./destructive-bash-guard";

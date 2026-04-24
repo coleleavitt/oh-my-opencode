@@ -21,6 +21,8 @@ import {
   executeSyncTask,
 } from "./executor"
 import { withWorktree } from "./worktree"
+import { getAgentConfigKey } from "../../shared/agent-display-names"
+import { isAgentBackgroundCapable } from "../../agents/agent-capabilities"
 
 export { resolveCategoryConfig } from "./categories"
 export type { SyncSessionCreatedEvent, DelegateTaskToolOptions, BuildSystemContentInput } from "./types"
@@ -244,6 +246,19 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
         agentToUse = resolution.agentToUse
         categoryModel = resolution.categoryModel
         fallbackChain = resolution.fallbackChain
+      }
+
+      // Background-capability gate: reject run_in_background=true for
+      // agents that only make sense to dispatch synchronously (oracle,
+      // argus, code-reviewer — consultation/review agents whose entire
+      // value is gating the caller's next step on their verdict).
+      // Declared in src/agents/agent-capabilities.ts; unlisted agents
+      // default to backgroundCapable=true.
+      if (runInBackground) {
+        const agentConfigKey = getAgentConfigKey(agentToUse)
+        if (!isAgentBackgroundCapable(agentConfigKey)) {
+          return `Agent "${agentToUse}" does not support run_in_background=true. This agent's value depends on you waiting for its verdict before proceeding. Re-dispatch with run_in_background=false, or use a different agent for parallel exploration.`
+        }
       }
 
       const systemContent = buildSystemContent({
