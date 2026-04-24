@@ -20,6 +20,7 @@ import {
   createAstGrepTools,
   createSessionManagerTools,
   createDelegateTask,
+  createSendMessageToTeammate,
   discoverCommandsSync,
   interactive_bash,
   createTaskCreateTool,
@@ -167,6 +168,16 @@ export function createToolRegistry(args: {
     teammatesConfig: pluginConfig.teammates,
   })
 
+  const sendMessageToTeammate = createSendMessageToTeammate({
+    client: ctx.client,
+    manager: managers.backgroundManager,
+    directory: ctx.directory,
+    teammateRegistry: managers.teammateRegistry,
+    teammatesConfig: pluginConfig.teammates,
+    syncPollTimeoutMs: pluginConfig.background_task?.syncPollTimeoutMs,
+    sisyphusAgentConfig: pluginConfig.sisyphus_agent,
+  })
+
   const getSessionIDForMcp = (): string | undefined => getMainSessionID()
 
   const skillMcpTool = createSkillMcpTool({
@@ -221,6 +232,7 @@ export function createToolRegistry(args: {
     call_omo_agent: callOmoAgent,
     ...(lookAt ? { look_at: lookAt } : {}),
     task: delegateTask,
+    send_message_to_teammate: sendMessageToTeammate,
     skill_mcp: skillMcpTool,
     skill: skillTool,
     ...(interactiveBashEnabled ? { interactive_bash } : {}),
