@@ -1,7 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { ATLAS_SYSTEM_PROMPT } from "./default"
-import { ATLAS_GPT_SYSTEM_PROMPT } from "./gpt"
-import { ATLAS_GEMINI_SYSTEM_PROMPT } from "./gemini"
+import { ATLAS_SYSTEM_PROMPT, ATLAS_GPT_SYSTEM_PROMPT, ATLAS_GEMINI_SYSTEM_PROMPT } from "./routed-prompt"
 
 describe("Atlas prompts auto-continue policy", () => {
   test("default variant should forbid asking user for continuation confirmation", () => {

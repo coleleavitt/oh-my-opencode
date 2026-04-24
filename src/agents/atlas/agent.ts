@@ -18,9 +18,7 @@ import { buildAgentIdentitySection, buildCategorySkillsDelegationGuide } from ".
 import type { CategoryConfig } from "../../config/schema"
 import { mergeCategories } from "../../shared/merge-categories"
 
-import { getDefaultAtlasPrompt } from "./default"
-import { getGptAtlasPrompt } from "./gpt"
-import { getGeminiAtlasPrompt } from "./gemini"
+import { getAtlasPromptFor, type AtlasPromptSource } from "./routed-prompt"
 import {
   getCategoryDescription,
   buildAgentSelectionSection,
@@ -31,18 +29,14 @@ import {
 
 const MODE: AgentMode = "primary"
 
-export type AtlasPromptSource = "default" | "gpt" | "gemini"
+export type { AtlasPromptSource }
 
 /**
  * Determines which Atlas prompt to use based on model.
  */
 export function getAtlasPromptSource(model?: string): AtlasPromptSource {
-  if (model && isGptModel(model)) {
-    return "gpt"
-  }
-  if (model && isGeminiModel(model)) {
-    return "gemini"
-  }
+  if (model && isGptModel(model)) return "gpt"
+  if (model && isGeminiModel(model)) return "gemini"
   return "default"
 }
 
@@ -57,17 +51,7 @@ export interface OrchestratorContext {
  * Gets the appropriate Atlas prompt based on model.
  */
 export function getAtlasPrompt(model?: string): string {
-  const source = getAtlasPromptSource(model)
-
-  switch (source) {
-    case "gpt":
-      return getGptAtlasPrompt()
-    case "gemini":
-      return getGeminiAtlasPrompt()
-    case "default":
-    default:
-      return getDefaultAtlasPrompt()
-  }
+  return getAtlasPromptFor(getAtlasPromptSource(model))
 }
 
 function buildDynamicOrchestratorPrompt(ctx?: OrchestratorContext): string {
