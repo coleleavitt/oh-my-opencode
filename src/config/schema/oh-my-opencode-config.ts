@@ -28,6 +28,7 @@ import { TmuxConfigSchema } from "./tmux"
 import { StartWorkConfigSchema } from "./start-work"
 import { StatusLineConfigSchema } from "./status-line"
 import { PermissionAutomationConfigSchema } from "./permission-automation"
+import { TeammatesConfigSchema } from "./teammates"
 import { WebsearchConfigSchema } from "./websearch"
 
 export const OhMyOpenCodeConfigSchema = z.object({
@@ -85,6 +86,7 @@ export const OhMyOpenCodeConfigSchema = z.object({
   status_line: StatusLineConfigSchema.optional(),
   file_changed: FileChangedConfigSchema.optional(),
   cwd_changed: CwdChangedConfigSchema.optional(),
+  teammates: TeammatesConfigSchema.optional(),
   /** Migration history to prevent re-applying migrations (e.g., model version upgrades) */
   _migrations: z.array(z.string()).optional(),
 })
