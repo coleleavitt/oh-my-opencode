@@ -1,6 +1,8 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 
 import { createDynamicTruncator } from "../../shared/dynamic-truncator";
+import { isReadOnlySubagent } from "../../shared/read-only-subagents";
+import { getSessionAgent } from "../../features/claude-code-session-state";
 import { processFilePathForReadmeInjection } from "./injector";
 import { clearInjectedPaths } from "./storage";
 
@@ -39,6 +41,11 @@ export function createDirectoryReadmeInjectorHook(
     const toolName = input.tool.toLowerCase();
 
     if (toolName === "read") {
+      // Ported from cc119 `omitClaudeMd: true` pattern — read-only
+      // research/review subagents don't benefit from project-context
+      // injection, so skip it and save the tokens.
+      if (isReadOnlySubagent(getSessionAgent(input.sessionID))) return;
+
       await processFilePathForReadmeInjection({
         ctx,
         truncator,
