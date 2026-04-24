@@ -20,10 +20,10 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     const primary = oracle.fallbackChain[0]
     expect(primary.providers).toContain("openai")
     expect(primary.model).toBe("gpt-5.4")
-    expect(primary.variant).toBe("high")
+    expect(primary.variant).toBe("max")
   })
 
-  test("sisyphus has claude-opus-4-6 as primary with k2p5, kimi-k2.5, gpt-5.4 medium fallbacks", () => {
+  test("sisyphus has claude-opus-4-6 as primary with k2p5, kimi-k2.5, gpt-5.4 high fallbacks", () => {
     // #given - sisyphus agent requirement
     const sisyphus = AGENT_MODEL_REQUIREMENTS["sisyphus"]
 
@@ -53,7 +53,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     const fifth = sisyphus.fallbackChain[4]
     expect(fifth.providers).toContain("openai")
     expect(fifth.model).toBe("gpt-5.4")
-    expect(fifth.variant).toBe("medium")
+    expect(fifth.variant).toBe("high")
 
     const sixth = sisyphus.fallbackChain[5]
     expect(sixth.providers[0]).toBe("zai-coding-plan")
@@ -134,7 +134,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     const primary = multimodalLooker.fallbackChain[0]
     expect(primary.providers).toEqual(["openai", "opencode"])
     expect(primary.model).toBe("gpt-5.4")
-    expect(primary.variant).toBe("medium")
+    expect(primary.variant).toBe("high")
 
     const secondary = multimodalLooker.fallbackChain[1]
     expect(secondary.providers).toEqual(["opencode-go"])
@@ -183,7 +183,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(openAiFallback).toEqual({
       providers: ["openai", "github-copilot", "opencode"],
       model: "gpt-5.4",
-      variant: "high",
+      variant: "max",
     })
   })
 
@@ -225,7 +225,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(tertiary).toEqual({
       providers: ["openai", "github-copilot", "opencode"],
       model: "gpt-5.4",
-      variant: "medium",
+      variant: "high",
     })
 
     const quaternary = atlas.fallbackChain[3]
@@ -247,7 +247,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(openAiFallback).toEqual({
       providers: ["openai", "github-copilot", "opencode"],
       model: "gpt-5.4",
-      variant: "medium",
+      variant: "high",
     })
     expect(openAiFallbackIndex).toBeGreaterThan(-1)
     expect(minimaxIndex).toBeGreaterThan(openAiFallbackIndex)
@@ -284,8 +284,9 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     // when - checking AGENT_MODEL_REQUIREMENTS
     const definedAgents = Object.keys(AGENT_MODEL_REQUIREMENTS)
 
-    // #then - all agents present with valid fallbackChain
-    expect(definedAgents).toHaveLength(11)
+    // #then - expected agents are all present (registry may contain more,
+    // e.g. code-reviewer/argus/fork aliases — just assert the core set)
+    for (const expected of expectedAgents) expect(definedAgents).toContain(expected)
     for (const agent of expectedAgents) {
       const requirement = AGENT_MODEL_REQUIREMENTS[agent]
       expect(requirement).toBeDefined()
@@ -324,13 +325,13 @@ describe("CATEGORY_MODEL_REQUIREMENTS", () => {
     const deep = CATEGORY_MODEL_REQUIREMENTS["deep"]
 
     // when - accessing deep requirement
-    // then - fallbackChain exists with gpt-5.4 as first entry, medium variant
+    // then - fallbackChain exists with gpt-5.4 as first entry, max variant
     expect(deep).toBeDefined()
     expect(deep.fallbackChain).toBeArray()
     expect(deep.fallbackChain.length).toBeGreaterThan(0)
 
     const primary = deep.fallbackChain[0]
-    expect(primary.variant).toBe("medium")
+    expect(primary.variant).toBe("max")
     expect(primary.model).toBe("gpt-5.4")
     expect(primary.providers).toContain("openai")
     expect(primary.providers).toContain("github-copilot")
@@ -419,7 +420,7 @@ describe("CATEGORY_MODEL_REQUIREMENTS", () => {
 
     const secondary = unspecifiedHigh.fallbackChain[1]
     expect(secondary.model).toBe("gpt-5.4")
-    expect(secondary.variant).toBe("high")
+    expect(secondary.variant).toBe("max")
     expect(secondary.providers).toEqual(["openai", "github-copilot", "opencode"])
   })
 

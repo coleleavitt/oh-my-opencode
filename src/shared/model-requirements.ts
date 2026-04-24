@@ -41,7 +41,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       { providers: ["zai-coding-plan", "opencode"], model: "glm-5" },
       { providers: ["opencode"], model: "big-pickle" },
@@ -53,7 +53,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "venice", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
     ],
     requiresProvider: ["openai", "github-copilot", "venice", "opencode"],
@@ -63,7 +63,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "high",
+        variant: "max",
       },
       {
         providers: ["google", "github-copilot", "opencode"],
@@ -100,7 +100,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       { providers: ["opencode-go"], model: "kimi-k2.5" },
       { providers: ["zai-coding-plan"], model: "glm-4.6v" },
@@ -120,7 +120,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "high",
+        variant: "max",
       },
       { providers: ["opencode-go"], model: "glm-5" },
       {
@@ -139,7 +139,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "high",
+        variant: "max",
       },
       { providers: ["opencode-go"], model: "glm-5" },
       { providers: ["kimi-for-coding"], model: "k2p5" },
@@ -175,7 +175,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       { providers: ["opencode-go"], model: "minimax-m2.7" },
     ],
@@ -190,7 +190,7 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       { providers: ["opencode-go"], model: "minimax-m2.7" },
       { providers: ["opencode"], model: "big-pickle" },
@@ -201,15 +201,17 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["anthropic", "github-copilot", "opencode"],
         model: "claude-opus-4-6",
+        variant: "max",
       },
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       {
         providers: ["google", "github-copilot", "opencode"],
         model: "gemini-3.1-pro",
+        variant: "high",
       },
       {
         providers: ["anthropic", "github-copilot", "opencode"],
@@ -222,15 +224,17 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["anthropic", "github-copilot", "opencode"],
         model: "claude-opus-4-6",
+        variant: "max",
       },
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "high",
       },
       {
         providers: ["google", "github-copilot", "opencode"],
         model: "gemini-3.1-pro",
+        variant: "high",
       },
       {
         providers: ["anthropic", "github-copilot", "opencode"],
@@ -299,7 +303,7 @@ export const CATEGORY_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "venice", "opencode"],
         model: "gpt-5.4",
-        variant: "medium",
+        variant: "max",
       },
       {
         providers: ["anthropic", "github-copilot", "opencode"],
@@ -376,7 +380,7 @@ export const CATEGORY_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
       {
         providers: ["openai", "github-copilot", "opencode"],
         model: "gpt-5.4",
-        variant: "high",
+        variant: "max",
       },
       { providers: ["zai-coding-plan", "opencode"], model: "glm-5" },
       { providers: ["kimi-for-coding"], model: "k2p5" },
