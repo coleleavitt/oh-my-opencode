@@ -10,6 +10,9 @@ export const BuiltinCommandNameSchema = z.enum([
   "stop-continuation",
   "remove-ai-slops",
   "security-review",
+  "thinking-off",
+  "thinking-on",
+  "effort-xhigh",
 ])
 
 export type BuiltinCommandName = z.infer<typeof BuiltinCommandNameSchema>

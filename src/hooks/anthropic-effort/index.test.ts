@@ -90,6 +90,46 @@ describe("createAnthropicEffortHook", () => {
     })
   })
 
+  describe("opus family with variant xhigh", () => {
+    it("injects effort xhigh for opus-4-7", async () => {
+      const hook = createAnthropicEffortHook()
+      const { input, output } = createMockParams({ modelID: "claude-opus-4-7", variant: "xhigh" })
+
+      await hook["chat.params"](input, output)
+
+      expect(output.options.effort).toBe("xhigh")
+    })
+
+    it("clamps xhigh to max for opus-4-6", async () => {
+      const hook = createAnthropicEffortHook()
+      const { input, output } = createMockParams({ modelID: "claude-opus-4-6", variant: "xhigh" })
+
+      await hook["chat.params"](input, output)
+
+      expect(output.options.effort).toBe("max")
+      expect(input.message.variant).toBe("max")
+    })
+
+    it("clamps xhigh to high for opus-4-5", async () => {
+      const hook = createAnthropicEffortHook()
+      const { input, output } = createMockParams({ modelID: "claude-opus-4-5", variant: "xhigh" })
+
+      await hook["chat.params"](input, output)
+
+      expect(output.options.effort).toBe("high")
+      expect(input.message.variant).toBe("high")
+    })
+
+    it("does not inject xhigh for non-claude providers", async () => {
+      const hook = createAnthropicEffortHook()
+      const { input, output } = createMockParams({ providerID: "openai", modelID: "gpt-5.4", variant: "xhigh" })
+
+      await hook["chat.params"](input, output)
+
+      expect(output.options.effort).toBeUndefined()
+    })
+  })
+
   describe("skip conditions", () => {
     it("does nothing when variant is not max", async () => {
       const hook = createAnthropicEffortHook()
