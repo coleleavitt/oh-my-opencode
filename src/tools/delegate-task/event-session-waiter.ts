@@ -41,7 +41,7 @@ async function checkSessionStatusDirect(
   sessionID: string,
 ): Promise<boolean> {
   try {
-    const resp = await (client.session as any).status?.({})
+    const resp = await client.session.status({})
     if (!resp?.data) return false
     const status = resp.data[sessionID]
     return !status || status.type === "idle"
