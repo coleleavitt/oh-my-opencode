@@ -47,7 +47,7 @@ function getAnthropicActualLimit(modelCacheState?: ContextLimitModelCacheState):
 }
 
 function supportsCachedAnthropicLimit(modelID: string): boolean {
-  // v114 Go() eligible: opus-4-[6-7], sonnet-4-[6+] are 1M-eligible
+  // Models eligible for cached 1M context: Opus 4.6-4.7, Sonnet 4.6+
   return /^claude-(opus-4[-.]([67])|sonnet-4[-.]([6-9]|\d{2,}))(\b|[-.])/i.test(modelID)
 }
 

@@ -1,18 +1,12 @@
 import { log, normalizeModelID } from "../../shared"
 
-const OPUS_PATTERN = /claude-.*opus/i
 const OPUS_46_PATTERN = /claude-.*opus.*4[.\-]?6/i
 const INTERNAL_SKIP_AGENTS = new Set(["title", "summary", "compaction"])
 
 function isClaudeProvider(providerID: string, modelID: string): boolean {
-  if (["anthropic", "google-vertex-anthropic", "opencode"].includes(providerID)) return true
+  if (["anthropic", "google-vertex-anthropic"].includes(providerID)) return true
   if (providerID === "github-copilot" && modelID.toLowerCase().includes("claude")) return true
   return false
-}
-
-function isOpusModel(modelID: string): boolean {
-  const normalized = normalizeModelID(modelID)
-  return OPUS_PATTERN.test(normalized)
 }
 
 function isOpus46OrNewer(modelID: string): boolean {
