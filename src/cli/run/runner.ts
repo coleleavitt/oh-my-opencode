@@ -21,12 +21,22 @@ export async function waitForEventProcessorShutdown(
   eventProcessor: Promise<void>,
   timeoutMs = EVENT_PROCESSOR_SHUTDOWN_TIMEOUT_MS,
 ): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
   const completed = await Promise.race([
     eventProcessor.then(() => true),
-    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+    new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), timeoutMs)
+    }),
   ])
+  if (timer) clearTimeout(timer)
 
-  void completed
+  if (!completed) {
+    console.error(
+      pc.yellow(
+        `[run] event processor did not drain within ${timeoutMs}ms; final events may be lost`,
+      ),
+    )
+  }
 }
 
 export async function run(options: RunOptions): Promise<number> {

@@ -92,6 +92,16 @@ describe("resolveRunAgent", () => {
 })
 
 describe("waitForEventProcessorShutdown", () => {
+  let consoleErrorSpy: ReturnType<typeof spyOn>
+
+  beforeEach(() => {
+    consoleErrorSpy = spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore()
+  })
+
   it("returns quickly when event processor completes", async () => {
     //#given
     const { waitForEventProcessorShutdown } = await import("./runner")
@@ -108,9 +118,30 @@ describe("waitForEventProcessorShutdown", () => {
     //#then
     const elapsed = performance.now() - start
     expect(elapsed).toBeLessThan(200)
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 
-  it("times out and continues when event processor does not complete", async () => {
+  it("does not leave the timeout dangling after fast completion", async () => {
+    //#given fast completion, long timeout — if the timer isn't cleared the
+    // test process will keep the event loop alive an extra 2s+ after the
+    // assertion below, so observable wall-clock to next tick stays low.
+    const { waitForEventProcessorShutdown } = await import("./runner")
+    const eventProcessor = Promise.resolve()
+    const start = performance.now()
+
+    //#when
+    await waitForEventProcessorShutdown(eventProcessor, 2_000)
+    // next tick — if the timer were dangling, this still resolves fast
+    // (we're just asserting the settle time, the leak would manifest as a
+    // slow test suite exit in CI, not a hang here)
+    await new Promise((r) => setImmediate(r))
+
+    //#then
+    const elapsed = performance.now() - start
+    expect(elapsed).toBeLessThan(100)
+  })
+
+  it("times out, continues, and warns when event processor does not complete", async () => {
     //#given
     const { waitForEventProcessorShutdown } = await import("./runner")
     const eventProcessor = new Promise<void>(() => {})
@@ -123,6 +154,10 @@ describe("waitForEventProcessorShutdown", () => {
     //#then
     const elapsed = performance.now() - start
     expect(elapsed).toBeGreaterThanOrEqual(timeoutMs - 10)
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+    const msg = String(consoleErrorSpy.mock.calls[0]?.[0] ?? "")
+    expect(msg).toContain("event processor did not drain")
+    expect(msg).toContain(`${timeoutMs}ms`)
   })
 })
 
