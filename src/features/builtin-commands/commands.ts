@@ -14,9 +14,6 @@ import { HANDOFF_TEMPLATE } from "./templates/handoff";
 import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review";
 import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops";
 import { SECURITY_REVIEW_TEMPLATE } from "./templates/security-review";
-import { THINKING_OFF_TEMPLATE } from "./templates/thinking-off";
-import { THINKING_ON_TEMPLATE } from "./templates/thinking-on";
-import { EFFORT_XHIGH_TEMPLATE } from "./templates/effort-xhigh";
 
 export interface LoadBuiltinCommandsOptions {
   useRegisteredAgents?: boolean;
@@ -177,27 +174,6 @@ Timestamp: $TIMESTAMP
 $ARGUMENTS
 </user-request>`,
       argumentHint: "[goal]",
-    },
-    "thinking-off": {
-      description:
-        "(builtin) Disable extended thinking for all Claude models",
-      template: `<command-instruction>
-${THINKING_OFF_TEMPLATE}
-</command-instruction>`,
-    },
-    "thinking-on": {
-      description:
-        "(builtin) Re-enable extended thinking (revert /thinking-off)",
-      template: `<command-instruction>
-${THINKING_ON_TEMPLATE}
-</command-instruction>`,
-    },
-    "effort-xhigh": {
-      description:
-        "(builtin) Set effort variant to xhigh (Opus 4.7 only)",
-      template: `<command-instruction>
-${EFFORT_XHIGH_TEMPLATE}
-</command-instruction>`,
     },
   };
 }

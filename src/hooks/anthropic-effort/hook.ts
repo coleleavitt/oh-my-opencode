@@ -41,20 +41,19 @@ interface ChatParamsOutput {
 }
 
 /**
- * Valid thinking budget levels per model tier.
- * Only Opus 4.6+ supports "max"; Opus 4.7+ supports "xhigh"; older models cap at "high".
+ * Resolve the requested variant to the best effort tier the model actually
+ * supports. Opus 4.7 supports xhigh; Opus 4.6 supports max; older models
+ * cap at high. "max" auto-promotes to xhigh on 4.7 so users get the best
+ * tier by just asking for max — no need for a separate slash command or
+ * variant name.
  */
-const MAX_VARIANT_BY_TIER: Record<string, string> = {
-  opus46: "max",
-  default: "high",
-}
-
 function clampVariant(variant: string, isOpus47: boolean, isOpus46OrNewer: boolean): string {
-  if (variant === "xhigh") {
-    return isOpus47 ? "xhigh" : isOpus46OrNewer ? "max" : "high"
+  if (variant === "xhigh" || variant === "max") {
+    if (isOpus47) return "xhigh"
+    if (isOpus46OrNewer) return "max"
+    return "high"
   }
-  if (variant !== "max") return variant
-  return isOpus46OrNewer ? MAX_VARIANT_BY_TIER.opus46 : MAX_VARIANT_BY_TIER.default
+  return variant
 }
 
 export function createAnthropicEffortHook() {

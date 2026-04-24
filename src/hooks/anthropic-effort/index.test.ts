@@ -74,6 +74,17 @@ describe("createAnthropicEffortHook", () => {
       expect(output.options.effort).toBe("max")
     })
 
+    it("auto-promotes variant max to effort xhigh on opus-4-7", async () => {
+      // Users asking for max on 4.7 get the best tier the model supports
+      // without needing to know about the xhigh variant name.
+      const hook = createAnthropicEffortHook()
+      const { input, output } = createMockParams({ modelID: "claude-opus-4-7", variant: "max" })
+
+      await hook["chat.params"](input, output)
+
+      expect(output.options.effort).toBe("xhigh")
+    })
+
     it("clamps max to high for opus-4-5 (only 4.6+ supports max)", async () => {
       //#given opus-4-5 model with variant max
       const hook = createAnthropicEffortHook()

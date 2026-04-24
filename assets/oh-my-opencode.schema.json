@@ -61,10 +61,7 @@
           "start-work",
           "stop-continuation",
           "remove-ai-slops",
-          "security-review",
-          "thinking-off",
-          "thinking-on",
-          "effort-xhigh"
+          "security-review"
         ]
       }
     },
