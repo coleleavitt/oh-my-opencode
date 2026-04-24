@@ -302,6 +302,15 @@ export class BackgroundManager {
       parentSessionID: input.parentSessionID,
     })
 
+    // Dispatch emission — ported from cc119 `tengu_bg_agent_dispatch`
+    // (cli.2.1.119.aligned.js:345386). Fields mirror the cc119 payload so
+    // operators comparing omo and upstream telemetry see the same shape.
+    log("[background-agent] dispatch", {
+      agent: input.agent,
+      source: process.env.OMO_BG_SOURCE ?? process.env.CLAUDE_BG_SOURCE ?? "shell",
+      intentLength: (input.prompt ?? "").length,
+    })
+
     if (!input.agent || input.agent.trim() === "") {
       throw new Error("Agent parameter is required")
     }
@@ -409,6 +418,18 @@ export class BackgroundManager {
           await this.startTask(item)
         } catch (error) {
           log("[background-agent] Error starting task:", error)
+          // Spawn-failed emission — ported from cc119
+          // `tengu_background_spawn_failed` (cli.2.1.119.aligned.js:443306).
+          // cc119 emits an empty payload; we include taskId, agent, and
+          // error class so the lifecycle transition is actually useful
+          // to someone reading the log.
+          log("[background-agent] spawn_failed", {
+            taskId: item.task.id,
+            agent: item.input.agent,
+            parentSessionID: item.task.parentSessionID,
+            error: error instanceof Error ? error.name : typeof error,
+            message: error instanceof Error ? error.message : String(error),
+          })
           this.rollbackPreStartDescendantReservation(item.task)
 
           // Mark task as error so the parent polling loop detects the failure
