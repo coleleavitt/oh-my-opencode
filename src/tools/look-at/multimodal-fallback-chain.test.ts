@@ -43,7 +43,7 @@ describe("buildMultimodalLookerFallbackChain", () => {
     expect(result[0]).toEqual({
       providers: ["openai"],
       model: "gpt-5.4",
-      variant: "medium",
+      variant: "high",
     })
   })
 })

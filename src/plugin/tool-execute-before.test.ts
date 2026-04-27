@@ -105,7 +105,7 @@ describe("createToolExecuteBeforeHandler", () => {
       const ctx = createCtxWithSessionMessages()
       const handler = createToolExecuteBeforeHandler({ ctx, hooks: emptyHooks })
       const input = { tool: "task", sessionID: "ses_123", callID: "call_1" }
-      const output = { args: { category: "quick", description: "Test" } as Record<string, unknown> }
+      const output = { args: { category: "writing", description: "Test" } as Record<string, unknown> }
 
       //#when
       await handler(input, output)
@@ -133,7 +133,7 @@ describe("createToolExecuteBeforeHandler", () => {
       const ctx = createCtxWithSessionMessages()
       const handler = createToolExecuteBeforeHandler({ ctx, hooks: emptyHooks })
       const input = { tool: "task", sessionID: "ses_123", callID: "call_1" }
-      const output = { args: { category: "quick", subagent_type: "oracle", description: "Test" } as Record<string, unknown> }
+      const output = { args: { category: "writing", subagent_type: "oracle", description: "Test" } as Record<string, unknown> }
 
       //#when
       await handler(input, output)

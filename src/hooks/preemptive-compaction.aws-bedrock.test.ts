@@ -4,6 +4,11 @@ import { describe, expect, it, mock } from "bun:test"
 
 import { OhMyOpenCodeConfigSchema } from "../config"
 
+// Test hermeticity: skip reading real ~/.config/opencode/anthropic-accounts.json
+// which may have context1m=true on dev machines (would make limit=1M, hiding the
+// 78% threshold and preventing summarize() from being called in these tests).
+process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
+
 const { createPreemptiveCompactionHook } = await import("./preemptive-compaction")
 
 type HookContext = Parameters<typeof createPreemptiveCompactionHook>[0]

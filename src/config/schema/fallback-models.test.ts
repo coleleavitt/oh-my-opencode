@@ -82,7 +82,7 @@ describe("OhMyOpenCodeConfigSchema fallback_models", () => {
     ]
     const config = {
       categories: {
-        deep: {
+        "visual-engineering": {
           fallback_models: fallbackModels,
         },
       },
@@ -94,7 +94,7 @@ describe("OhMyOpenCodeConfigSchema fallback_models", () => {
     // then
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.categories?.deep?.fallback_models).toEqual(config.categories.deep.fallback_models)
+      expect(result.data.categories?.["visual-engineering"]?.fallback_models).toEqual(config.categories["visual-engineering"].fallback_models)
     }
   })
 })

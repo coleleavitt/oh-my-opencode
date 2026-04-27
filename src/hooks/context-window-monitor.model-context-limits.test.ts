@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, beforeEach, afterEach } from "bun:test"
 import { createContextWindowMonitorHook } from "./context-window-monitor"
 
 function createOutput() {
@@ -8,6 +8,12 @@ function createOutput() {
 }
 
 describe("context-window-monitor modelContextLimitsCache", () => {
+  beforeEach(() => {
+    process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
+  })
+  afterEach(() => {
+    delete process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK
+  })
   it("does not append reminder below cached non-anthropic threshold", async () => {
     // given
     const modelContextLimitsCache = new Map<string, number>()

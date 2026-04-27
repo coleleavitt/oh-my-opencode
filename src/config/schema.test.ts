@@ -315,7 +315,7 @@ describe("AgentOverrideConfigSchema", () => {
       // given - category should take precedence at runtime, but both should validate
       const config = { 
         model: "openai/gpt-5.4",
-        category: "ultrabrain"
+        category: "visual-engineering"
       }
 
       // when
@@ -325,7 +325,7 @@ describe("AgentOverrideConfigSchema", () => {
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.data.model).toBe("openai/gpt-5.4")
-        expect(result.data.category).toBe("ultrabrain")
+        expect(result.data.category).toBe("visual-engineering")
       }
     })
   })
@@ -352,7 +352,7 @@ describe("AgentOverrideConfigSchema", () => {
     test("accepts category with skills and other fields", () => {
       // given
       const config = { 
-        category: "ultrabrain",
+        category: "visual-engineering",
         skills: ["code-reviewer"],
         temperature: 0.3,
         prompt_append: "Extra instructions"
@@ -364,7 +364,7 @@ describe("AgentOverrideConfigSchema", () => {
       // then
       expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.data.category).toBe("ultrabrain")
+        expect(result.data.category).toBe("visual-engineering")
         expect(result.data.skills).toEqual(["code-reviewer"])
         expect(result.data.temperature).toBe(0.3)
         expect(result.data.prompt_append).toBe("Extra instructions")
@@ -436,10 +436,8 @@ describe("CategoryConfigSchema", () => {
 
 describe("BuiltinCategoryNameSchema", () => {
   test("accepts all builtin category names", () => {
-    // given
-    const categories = ["visual-engineering", "ultrabrain", "artistry", "quick", "unspecified-low", "unspecified-high", "writing"]
+    const categories = ["visual-engineering", "artistry", "writing"]
 
-    // when / #then
     for (const cat of categories) {
       const result = BuiltinCategoryNameSchema.safeParse(cat)
       expect(result.success).toBe(true)
@@ -576,10 +574,10 @@ describe("Sisyphus-Junior agent override", () => {
     const config = {
       agents: {
         metis: {
-          category: "ultrabrain",
+          category: "visual-engineering",
         },
         momus: {
-          category: "quick",
+          category: "writing",
         },
       },
     }
@@ -590,8 +588,8 @@ describe("Sisyphus-Junior agent override", () => {
     // then
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.agents?.metis?.category).toBe("ultrabrain")
-      expect(result.data.agents?.momus?.category).toBe("quick")
+      expect(result.data.agents?.metis?.category).toBe("visual-engineering")
+      expect(result.data.agents?.momus?.category).toBe("writing")
     }
   })
 })

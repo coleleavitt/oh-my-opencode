@@ -13,6 +13,7 @@ import { syncContinuationDeps, type SyncContinuationDeps } from "./sync-continua
 import { setSessionTools } from "../../shared/session-tools-store"
 import { normalizeSDKResponse } from "../../shared"
 import { buildTaskPrompt } from "./prompt-builder"
+import { normalizeAgentForPrompt } from "../../shared/agent-display-names"
 
 export async function executeSyncContinuation(
   args: DelegateTaskArgs,
@@ -95,10 +96,12 @@ export async function executeSyncContinuation(
     }
     setSessionTools(args.session_id!, tools)
 
+    const dispatchAgent =
+      resumeAgent !== undefined ? (normalizeAgentForPrompt(resumeAgent) ?? resumeAgent) : undefined
     await promptWithModelSuggestionRetry(client, {
       path: { id: args.session_id! },
       body: {
-        ...(resumeAgent !== undefined ? { agent: resumeAgent } : {}),
+        ...(dispatchAgent !== undefined ? { agent: dispatchAgent } : {}),
         ...(resumeModel !== undefined ? { model: resumeModel } : {}),
         ...(resumeVariant !== undefined ? { variant: resumeVariant } : {}),
         tools,

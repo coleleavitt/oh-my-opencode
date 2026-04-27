@@ -275,7 +275,7 @@ session_id: ses_subagent_abc
         metadata: {
           sessionId: "ses_subagent_abc",
           agent: "sisyphus-junior",
-          category: "quick",
+          category: "writing",
           truncated: false,
         } as Record<string, unknown>,
       }
@@ -644,7 +644,7 @@ session_id: ses_auth_flow_123
 </task_metadata>`,
         metadata: {
           agent: "sisyphus-junior",
-          category: "deep",
+          category: "visual-engineering",
         },
       }
 
@@ -711,7 +711,7 @@ session_id: ses_auth_flow_123
 </task_metadata>`,
           metadata: {
             agent: "sisyphus-junior",
-            category: "deep",
+            category: "visual-engineering",
           },
         }
       )
@@ -761,7 +761,7 @@ session_id: ses_old_task_111
 </task_metadata>`,
         metadata: {
           agent: "sisyphus-junior",
-          category: "deep",
+          category: "visual-engineering",
         },
       }
       await hook["tool.execute.after"](

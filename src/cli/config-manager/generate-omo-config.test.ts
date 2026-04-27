@@ -93,7 +93,7 @@ describe("generateOmoConfig - model fallback system", () => {
 
     //#then
     expect((result.agents as Record<string, { model: string; variant?: string }>).sisyphus.model).toBe("openai/gpt-5.4")
-    expect((result.agents as Record<string, { model: string; variant?: string }>).sisyphus.variant).toBe("medium")
+    expect((result.agents as Record<string, { model: string; variant?: string }>).sisyphus.variant).toBe("high")
     expect((result.agents as Record<string, { model: string }>).oracle.model).toBe("openai/gpt-5.4")
     expect((result.agents as Record<string, { model: string }>)['multimodal-looker'].model).toBe("openai/gpt-5.4")
   })

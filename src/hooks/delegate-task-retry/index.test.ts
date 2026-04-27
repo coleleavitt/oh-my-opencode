@@ -101,7 +101,7 @@ describe("sisyphus-task-retry", () => {
       const guidance = buildRetryGuidance(errorInfo)
       
       expect(guidance).toContain("visual-engineering")
-      expect(guidance).toContain("ultrabrain")
+      expect(guidance).toContain("visual-engineering")
     })
 
     it("should provide fix for unknown agent with available list", () => {

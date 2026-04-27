@@ -642,19 +642,6 @@ describe("default_agent behavior with Sisyphus orchestration", () => {
 })
 
 describe("Prometheus category config resolution", () => {
-  test("resolves ultrabrain category config", () => {
-    // given
-    const categoryName = "ultrabrain"
-
-    // when
-    const config = resolveCategoryConfig(categoryName)
-
-    // then
-    expect(config).toBeDefined()
-    expect(config?.model).toBe("openai/gpt-5.4")
-    expect(config?.variant).toBe("xhigh")
-  })
-
   test("resolves visual-engineering category config", () => {
     // given
     const categoryName = "visual-engineering"
@@ -668,19 +655,16 @@ describe("Prometheus category config resolution", () => {
   })
 
   test("user categories override default categories", () => {
-    // given
-    const categoryName = "ultrabrain"
+    const categoryName = "visual-engineering"
     const userCategories: Record<string, CategoryConfig> = {
-      ultrabrain: {
+      "visual-engineering": {
         model: "google/antigravity-claude-opus-4-5-thinking",
         temperature: 0.1,
       },
     }
 
-    // when
     const config = resolveCategoryConfig(categoryName, userCategories)
 
-    // then
     expect(config).toBeDefined()
     expect(config?.model).toBe("google/antigravity-claude-opus-4-5-thinking")
     expect(config?.temperature).toBe(0.1)
@@ -698,21 +682,17 @@ describe("Prometheus category config resolution", () => {
   })
 
   test("falls back to default when user category has no entry", () => {
-    // given
-    const categoryName = "ultrabrain"
+    const categoryName = "writing"
     const userCategories: Record<string, CategoryConfig> = {
       "visual-engineering": {
         model: "custom/visual-model",
       },
     }
 
-    // when
     const config = resolveCategoryConfig(categoryName, userCategories)
 
-    // then - falls back to DEFAULT_CATEGORIES
     expect(config).toBeDefined()
-    expect(config?.model).toBe("openai/gpt-5.4")
-    expect(config?.variant).toBe("xhigh")
+    expect(config?.model).toBe("kimi-for-coding/k2p5")
   })
 
   test("preserves all category properties (temperature, top_p, tools, etc.)", () => {

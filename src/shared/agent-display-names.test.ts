@@ -201,6 +201,29 @@ describe("getAgentListDisplayName", () => {
   })
 })
 
+describe("regression: agent-not-found dispatch bug", () => {
+  it("the 6 ceremonial agents normalize to display names (not config keys) for prompt_async dispatch", () => {
+    const ceremonialAgents = [
+      ["sisyphus", "Sisyphus - Ultraworker"],
+      ["hephaestus", "Hephaestus - Deep Agent"],
+      ["prometheus", "Prometheus - Plan Builder"],
+      ["atlas", "Atlas - Plan Executor"],
+      ["metis", "Metis - Plan Consultant"],
+      ["momus", "Momus - Plan Critic"],
+    ] as const
+
+    for (const [configKey, displayName] of ceremonialAgents) {
+      expect(normalizeAgentForPrompt(configKey)).toBe(displayName)
+      expect(normalizeAgentForPrompt(displayName)).toBe(displayName)
+    }
+  })
+
+  it("dispatching with normalizeAgentForPromptKey would BREAK opencode lookup for ceremonial agents", () => {
+    expect(normalizeAgentForPromptKey("Momus - Plan Critic")).toBe("momus")
+    expect(normalizeAgentForPromptKey("Metis - Plan Consultant")).toBe("metis")
+  })
+})
+
 describe("normalizeAgentForPrompt", () => {
   it("strips core UI ordering prefixes back to canonical display names", () => {
     expect(normalizeAgentForPrompt(getAgentListDisplayName("sisyphus"))).toBe("Sisyphus - Ultraworker")

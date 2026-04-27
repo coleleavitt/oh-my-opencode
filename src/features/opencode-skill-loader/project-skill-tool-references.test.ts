@@ -12,15 +12,17 @@ async function readProjectSkill(...segments: string[]) {
 
 describe("project skill tool references", () => {
   describe("#given work-with-pr skill instructions", () => {
-    test("#when reading the commit delegation example #then it uses a real task category", async () => {
+    test("#when reading the commit delegation example #then it uses a real task subagent_type", async () => {
       const skillContent = await readProjectSkill("work-with-pr")
 
-      const usesQuickCategory = skillContent.includes(
-        'task(category="quick", load_skills=["git-master"], prompt="Commit the changes atomically following git-master conventions. Repository is at {WORKTREE_PATH}.")'
+      const usesGeneralSubagent = skillContent.includes(
+        'task(subagent_type="general", load_skills=["git-master"], prompt="Commit the changes atomically following git-master conventions. Repository is at {WORKTREE_PATH}.")'
       )
 
-      expect(usesQuickCategory).toBe(true)
+      expect(usesGeneralSubagent).toBe(true)
       expect(skillContent).not.toContain('task(category="git"')
+      expect(skillContent).not.toContain('category="writing"')
+      expect(skillContent).not.toContain('category="artistry"')
     })
   })
 

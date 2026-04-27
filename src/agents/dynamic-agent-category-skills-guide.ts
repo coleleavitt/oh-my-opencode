@@ -119,22 +119,21 @@ Every delegation MUST use the category that matches the task's domain. Mismatche
 
 **VISUAL WORK = ALWAYS \`visual-engineering\`. NO EXCEPTIONS.**
 
-Any task involving UI, UX, CSS, styling, layout, animation, design, or frontend components MUST go to \`visual-engineering\`. Never delegate visual work to \`quick\`, \`unspecified-*\`, or any other category.
+Any task involving UI, UX, CSS, styling, layout, animation, design, or frontend components MUST go to \`visual-engineering\`. Never delegate visual work to \`writing\`, \`artistry\`, or any other non-visual category.
 
 \`\`\`typescript
 // CORRECT: Visual work → visual-engineering category
 task(category="visual-engineering", load_skills=["frontend-ui-ux"], prompt="Redesign the sidebar layout with new spacing...")
 
 // WRONG: Visual work in wrong category - WILL PRODUCE INFERIOR RESULTS
-task(category="quick", load_skills=[], prompt="Redesign the sidebar layout with new spacing...")
+task(category="writing", load_skills=[], prompt="Redesign the sidebar layout with new spacing...")
 \`\`\`
 
 | Task Domain | MUST Use Category |
 |---|---|
 | UI, styling, animations, layout, design | \`visual-engineering\` |
-| Hard logic, architecture decisions, algorithms | \`ultrabrain\` |
-| Autonomous research + end-to-end implementation | \`deep\` |
-| Single-file typo, trivial config change | \`quick\` |
+| Creative, unconventional problem-solving | \`artistry\` |
+| Documentation, prose, technical writing | \`writing\` |
 
-**When in doubt about category, it is almost never \`quick\` or \`unspecified-*\`. Match the domain.**`
+**For cost or model decisions, set \`model\` directly on the task call (e.g. \`model: "anthropic/claude-haiku-4-5"\`) instead of routing through a category.**`
 }

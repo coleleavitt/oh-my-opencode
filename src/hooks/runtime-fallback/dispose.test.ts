@@ -1,5 +1,9 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test"
 import type { HookDeps, RuntimeFallbackPluginInput } from "./types"
+import * as autoRetry from "./auto-retry"
+import * as eventHandler from "./event-handler"
+import * as messageUpdateHandler from "./message-update-handler"
+import * as chatMessageHandler from "./chat-message-handler"
 
 let capturedDeps: HookDeps | undefined
 
@@ -20,23 +24,31 @@ const mockCreateEventHandler = mock(() => async () => {})
 const mockCreateMessageUpdateHandler = mock(() => async () => {})
 const mockCreateChatMessageHandler = mock(() => async () => {})
 
-mock.module("./auto-retry", () => ({
-  createAutoRetryHelpers: mockCreateAutoRetryHelpers,
-}))
-
-mock.module("./event-handler", () => ({
-  createEventHandler: mockCreateEventHandler,
-}))
-
-mock.module("./message-update-handler", () => ({
-  createMessageUpdateHandler: mockCreateMessageUpdateHandler,
-}))
-
-mock.module("./chat-message-handler", () => ({
-  createChatMessageHandler: mockCreateChatMessageHandler,
-}))
+// Use spyOn instead of mock.module — bun's `mock.module()` installs a
+// sticky module-cache override that leaks to sibling test files in the
+// same process even after `mock.restore()`. Sibling files (index.test,
+// provider-matrix.test, etc.) saw these stubs and 59 of their tests
+// failed. spyOn auto-restores per-spy and doesn't poison the cache.
+const autoRetrySpy = spyOn(autoRetry, "createAutoRetryHelpers").mockImplementation(
+  mockCreateAutoRetryHelpers as never,
+)
+const eventHandlerSpy = spyOn(eventHandler, "createEventHandler").mockImplementation(
+  mockCreateEventHandler as never,
+)
+const messageUpdateHandlerSpy = spyOn(
+  messageUpdateHandler,
+  "createMessageUpdateHandler",
+).mockImplementation(mockCreateMessageUpdateHandler as never)
+const chatMessageHandlerSpy = spyOn(
+  chatMessageHandler,
+  "createChatMessageHandler",
+).mockImplementation(mockCreateChatMessageHandler as never)
 
 afterAll(() => {
+  autoRetrySpy.mockRestore()
+  eventHandlerSpy.mockRestore()
+  messageUpdateHandlerSpy.mockRestore()
+  chatMessageHandlerSpy.mockRestore()
   mock.restore()
 })
 

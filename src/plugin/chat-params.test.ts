@@ -11,6 +11,7 @@ import {
   getSessionPromptParams,
   setSessionPromptParams,
 } from "../shared/session-prompt-params-state"
+import { clear as clearLatch } from "../shared/prompt-cache-latch"
 
 describe("createChatParamsHandler", () => {
   let tempCacheRoot = ""
@@ -27,6 +28,8 @@ describe("createChatParamsHandler", () => {
   afterEach(() => {
     clearSessionPromptParams("ses_chat_params")
     clearSessionPromptParams("ses_chat_params_temperature")
+    clearLatch("ses_chat_params")
+    clearLatch("ses_chat_params_temperature")
     writeProviderModelsCache({ connected: [], models: {} })
     getCacheDirSpy?.mockRestore()
     if (tempCacheRoot) {

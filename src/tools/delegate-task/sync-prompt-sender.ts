@@ -11,7 +11,7 @@ import { getAgentToolRestrictions } from "../../shared/agent-tool-restrictions"
 import { applySessionPromptParams } from "../../shared/session-prompt-params-helpers"
 import { setSessionTools } from "../../shared/session-tools-store"
 import { createInternalAgentTextPart } from "../../shared/internal-initiator-marker"
-import { normalizeAgentForPromptKey } from "../../shared/agent-display-names"
+import { normalizeAgentForPrompt } from "../../shared/agent-display-names"
 
 type SendSyncPromptDeps = {
   promptWithModelSuggestionRetry: typeof promptWithModelSuggestionRetry
@@ -78,13 +78,14 @@ export async function sendSyncPrompt(
 
   applySessionPromptParams(input.sessionID, input.categoryModel)
 
-  // Normalize to the lowercase config key OpenCode's agent registry uses.
-  // The internal agentToUse may be a display name ("Sisyphus-Junior",
-  // "Atlas - Plan Executor") or a ZWSP-prefixed sort variant; only the
-  // config key ("sisyphus-junior", "atlas") resolves via
-  // agents.get(input.agent) at the OpenCode server. Sending a display name
-  // used to silently land the session on the 'general' fallback agent.
-  const normalizedAgent = normalizeAgentForPromptKey(input.agentToUse) ?? input.agentToUse
+  // Normalize to the canonical display name OpenCode's agent registry uses
+  // after agent-key-remapper runs (see src/plugin-handlers/agent-key-remapper.ts:12).
+  // The 6 ceremonial agents (sisyphus, hephaestus, prometheus, atlas, metis, momus)
+  // are registered as display names ("Sisyphus - Ultraworker", ...). Sending a
+  // lowercase config key like "momus" yields "Agent not found: momus" because the
+  // registry only has "Momus - Plan Critic". opencode now does case-insensitive
+  // fallback (see Agent.get), but display name remains the canonical wire form.
+  const normalizedAgent = normalizeAgentForPrompt(input.agentToUse) ?? input.agentToUse
 
   const promptArgs = {
     path: { id: input.sessionID },

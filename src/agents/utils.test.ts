@@ -1021,10 +1021,12 @@ describe("createBuiltinAgents with requiresAnyModel gating (sisyphus)", () => {
       // #then
       expect(agents.atlas).toBeDefined()
       expect(agents.atlas.model).toBe("openai/gpt-5.4")
-      expect(agents.atlas.variant).toBe("medium")
+      // Bumped from "medium" → "high" in commit 6727cd45 (reasoning agents max/high effort)
+      expect(agents.atlas.variant).toBe("high")
       expect(agents.metis).toBeDefined()
       expect(agents.metis.model).toBe("openai/gpt-5.4")
-      expect(agents.metis.variant).toBe("high")
+      // Bumped from "high" → "max" in commit 6727cd45
+      expect(agents.metis.variant).toBe("max")
     } finally {
       fetchSpy.mockRestore()
       cacheSpy.mockRestore()
@@ -1165,23 +1167,20 @@ describe("buildAgent with category and skills", () => {
   })
 
   test("agent with category and skills applies both", () => {
-    // #given
     const source = {
       "test-agent": () =>
         ({
           description: "Test agent",
-          category: "ultrabrain",
+          category: "visual-engineering",
           skills: ["frontend-ui-ux"],
           prompt: "Task description",
         }) as AgentConfig,
     }
 
-    // #when
     const agent = buildAgent(source["test-agent"], TEST_MODEL)
 
-    // #then - category's built-in model and skills are applied
-    expect(agent.model).toBe("openai/gpt-5.4")
-    expect(agent.variant).toBe("xhigh")
+    expect(agent.model).toBe("google/gemini-3.1-pro")
+    expect(agent.variant).toBe("high")
     expect(agent.prompt).toContain("Role: Designer-Turned-Developer")
     expect(agent.prompt).toContain("Task description")
   })
@@ -1296,24 +1295,20 @@ describe("override.category expansion in createBuiltinAgents", () => {
   })
 
   test("standard agent override with category expands category properties", async () => {
-    // #given
     const overrides = {
-      oracle: { category: "ultrabrain" } as any,
+      oracle: { category: "visual-engineering" } as any,
     }
 
-    // #when
     const agents = await createBuiltinAgents([], overrides, undefined, TEST_DEFAULT_MODEL)
 
-    // #then - ultrabrain category: model=openai/gpt-5.4, variant=xhigh
     expect(agents.oracle).toBeDefined()
-    expect(agents.oracle.model).toBe("openai/gpt-5.4")
-    expect(agents.oracle.variant).toBe("xhigh")
+    expect(agents.oracle.model).toBe("google/gemini-3.1-pro")
+    expect(agents.oracle.variant).toBe("high")
   })
 
   test("standard agent override with category AND direct variant - direct wins", async () => {
-    // #given - ultrabrain has variant=xhigh, but direct override says "max"
     const overrides = {
-      oracle: { category: "ultrabrain", variant: "max" } as any,
+      oracle: { category: "visual-engineering", variant: "max" } as any,
     }
 
     // #when
@@ -1365,33 +1360,27 @@ describe("override.category expansion in createBuiltinAgents", () => {
   })
 
   test("sisyphus override with category expands category properties", async () => {
-    // #given
     const overrides = {
-      sisyphus: { category: "ultrabrain" } as any,
+      sisyphus: { category: "visual-engineering" } as any,
     }
 
-    // #when
     const agents = await createBuiltinAgents([], overrides, undefined, TEST_DEFAULT_MODEL)
 
-    // #then - ultrabrain category: model=openai/gpt-5.4, variant=xhigh
     expect(agents.sisyphus).toBeDefined()
-    expect(agents.sisyphus.model).toBe("openai/gpt-5.4")
-    expect(agents.sisyphus.variant).toBe("xhigh")
+    expect(agents.sisyphus.model).toBe("google/gemini-3.1-pro")
+    expect(agents.sisyphus.variant).toBe("high")
   })
 
   test("atlas override with category expands category properties", async () => {
-    // #given
     const overrides = {
-      atlas: { category: "ultrabrain" } as any,
+      atlas: { category: "visual-engineering" } as any,
     }
 
-    // #when
     const agents = await createBuiltinAgents([], overrides, undefined, TEST_DEFAULT_MODEL)
 
-    // #then - ultrabrain category: model=openai/gpt-5.4, variant=xhigh
     expect(agents.atlas).toBeDefined()
-    expect(agents.atlas.model).toBe("openai/gpt-5.4")
-    expect(agents.atlas.variant).toBe("xhigh")
+    expect(agents.atlas.model).toBe("google/gemini-3.1-pro")
+    expect(agents.atlas.variant).toBe("high")
   })
 
   test("override with non-existent category has no effect on config", async () => {

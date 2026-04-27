@@ -175,19 +175,16 @@ describe("buildUltraworkSection", () => {
 })
 
 describe("buildParallelDelegationSection", () => {
-  const deepCategory: AvailableCategory = { name: "deep", description: "Autonomous problem-solving" }
-  const unspecifiedHighCategory: AvailableCategory = { name: "unspecified-high", description: "High effort tasks" }
-  const otherCategory: AvailableCategory = { name: "quick", description: "Trivial tasks" }
+  const visualCategory: AvailableCategory = { name: "visual-engineering", description: "Frontend, UI/UX" }
+  const artistryCategory: AvailableCategory = { name: "artistry", description: "Creative approaches" }
+  const writingCategory: AvailableCategory = { name: "writing", description: "Documentation" }
 
-  it("#given non-Claude model with deep category #when building #then returns aggressive delegation section", () => {
-    //#given
+  it("#given non-Claude model with categories #when building #then returns aggressive delegation section", () => {
     const model = "google/gemini-3.1-pro"
-    const categories = [deepCategory, otherCategory]
+    const categories = [visualCategory, writingCategory]
 
-    //#when
     const result = buildParallelDelegationSection(model, categories)
 
-    //#then
     expect(result).toContain("DECOMPOSE AND DELEGATE")
     expect(result).toContain("NOT AN IMPLEMENTER")
     expect(result).toContain("run_in_background=true")
@@ -195,41 +192,32 @@ describe("buildParallelDelegationSection", () => {
     expect(result).toContain("NEVER implement directly")
   })
 
-  it("#given non-Claude model with unspecified-high category #when building #then returns aggressive delegation section", () => {
-    //#given
+  it("#given non-Claude model with artistry category #when building #then returns aggressive delegation section", () => {
     const model = "openai/gpt-5.4"
-    const categories = [unspecifiedHighCategory, otherCategory]
+    const categories = [artistryCategory, writingCategory]
 
-    //#when
     const result = buildParallelDelegationSection(model, categories)
 
-    //#then
     expect(result).toContain("DECOMPOSE AND DELEGATE")
-    expect(result).toContain("`deep` or `unspecified-high`")
+    expect(result).toContain("category-matched agent")
     expect(result).toContain("NEVER work sequentially")
   })
 
   it("#given Claude model #when building #then returns empty", () => {
-    //#given
     const model = "anthropic/claude-opus-4-6"
-    const categories = [deepCategory]
+    const categories = [visualCategory]
 
-    //#when
     const result = buildParallelDelegationSection(model, categories)
 
-    //#then
     expect(result).toBe("")
   })
 
-  it("#given non-Claude model without deep or unspecified-high category #when building #then returns empty", () => {
-    //#given
+  it("#given non-Claude model with empty categories #when building #then returns empty", () => {
     const model = "openai/gpt-5.4"
-    const categories = [otherCategory]
+    const categories: AvailableCategory[] = []
 
-    //#when
     const result = buildParallelDelegationSection(model, categories)
 
-    //#then
     expect(result).toBe("")
   })
 })

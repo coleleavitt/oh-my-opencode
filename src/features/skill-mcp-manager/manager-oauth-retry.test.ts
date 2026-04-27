@@ -1,8 +1,14 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import type { ClaudeCodeMcpServer } from "../claude-code-mcp-loader/types"
 import type { OAuthTokenData } from "../mcp-oauth/storage"
 import type { SkillMcpClientInfo, SkillMcpServerContext } from "./types"
+import * as connection from "./connection"
 
+// Use spyOn for `connection` instead of `mock.module()`. mock.module
+// installs a sticky module-cache override that bun does NOT cleanly undo
+// in afterAll, so sibling test files (manager.test.ts) saw the "throw
+// 'not used'" stub instead of the real connection. spyOn is per-spy and
+// auto-restored, so it doesn't leak across test files.
 const mockGetOrCreateClient = mock(async () => {
   throw new Error("not used")
 })
@@ -14,16 +20,17 @@ const mockGetOrCreateClientWithRetryImpl = mock(async () => ({
 
 type ManagerModule = typeof import("./manager")
 
+let connectionSpies: ReturnType<typeof spyOn>[] = []
+
 async function importFreshManagerModule(): Promise<ManagerModule> {
-  mock.module("./connection", () => ({
-    getOrCreateClient: mockGetOrCreateClient,
-    getOrCreateClientWithRetryImpl: mockGetOrCreateClientWithRetryImpl,
-  }))
-
-  mock.module("../mcp-oauth/provider", () => ({
-    McpOAuthProvider: class MockMcpOAuthProvider {},
-  }))
-
+  // Restore previous spies (if any) before installing fresh ones.
+  for (const s of connectionSpies) s.mockRestore()
+  connectionSpies = [
+    spyOn(connection, "getOrCreateClient").mockImplementation(mockGetOrCreateClient as never),
+    spyOn(connection, "getOrCreateClientWithRetryImpl").mockImplementation(
+      mockGetOrCreateClientWithRetryImpl as never,
+    ),
+  ]
   return await import(new URL(`./manager.ts?oauth-retry-test=${Date.now()}-${Math.random()}`, import.meta.url).href)
 }
 
@@ -46,7 +53,14 @@ function createContext(): SkillMcpServerContext {
   }
 }
 
+afterEach(() => {
+  for (const s of connectionSpies) s.mockRestore()
+  connectionSpies = []
+})
+
 afterAll(() => {
+  for (const s of connectionSpies) s.mockRestore()
+  connectionSpies = []
   mock.restore()
 })
 

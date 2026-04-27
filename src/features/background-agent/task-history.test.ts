@@ -32,7 +32,7 @@ describe("TaskHistory", () => {
     it("upserts without clobbering undefined fields", () => {
       //#given
       const history = new TaskHistory()
-      history.record("parent-1", { id: "t1", agent: "explore", description: "Find auth", status: "pending", category: "quick" })
+      history.record("parent-1", { id: "t1", agent: "explore", description: "Find auth", status: "pending", category: "writing" })
 
       //#when
       history.record("parent-1", { id: "t1", agent: "explore", description: "Find auth", status: "running" })
@@ -133,13 +133,13 @@ describe("TaskHistory", () => {
     it("includes category when present", () => {
       //#given
       const history = new TaskHistory()
-      history.record("parent-1", { id: "t1", agent: "explore", description: "Find auth", status: "running", category: "quick" })
+      history.record("parent-1", { id: "t1", agent: "explore", description: "Find auth", status: "running", category: "writing" })
 
       //#when
       const result = history.formatForCompaction("parent-1")
 
       //#then
-      expect(result).toContain("[quick]")
+      expect(result).toContain("[writing]")
     })
 
     it("includes session_id when present", () => {

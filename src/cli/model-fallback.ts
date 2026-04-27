@@ -186,11 +186,7 @@ export function generateModelConfig(config: InstallConfig): GeneratedOmoConfig {
   }
 
   for (const [cat, req] of Object.entries(CLI_CATEGORY_MODEL_REQUIREMENTS)) {
-    // Special case: unspecified-high downgrades to unspecified-low when not isMaxPlan
-    const fallbackChain =
-      cat === "unspecified-high" && !avail.isMaxPlan
-        ? CLI_CATEGORY_MODEL_REQUIREMENTS["unspecified-low"].fallbackChain
-        : req.fallbackChain
+    const fallbackChain = req.fallbackChain
 
     if (req.requiresModel && !isRequiredModelAvailable(req.requiresModel, req.fallbackChain, avail)) {
       continue

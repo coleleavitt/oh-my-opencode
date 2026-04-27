@@ -36,7 +36,7 @@ describe("resolveCategoryExecution", () => {
 	test("returns unpinned resolution when category cache is not ready on first run", async () => {
 		//#given
 		const args = {
-			category: "deep",
+			category: "visual-engineering",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -46,7 +46,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			deep: {},
+			"visual-engineering": {},
 		}
 		const inheritedModel = undefined
 		const systemDefaultModel = "anthropic/claude-sonnet-4-6"
@@ -88,7 +88,7 @@ describe("resolveCategoryExecution", () => {
 	test("uses category fallback_models for background/runtime fallback chain", async () => {
 		//#given
 		const args = {
-			category: "deep",
+			category: "visual-engineering",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -98,7 +98,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			deep: {
+			"visual-engineering": {
 				model: "quotio/claude-opus-4-6",
 				fallback_models: ["quotio/kimi-k2.5", "openai/gpt-5.2(high)"],
 			},
@@ -124,7 +124,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -134,7 +134,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				fallback_models: [
 					{
 						model: "openai/gpt-5.4 high",
@@ -172,7 +172,7 @@ describe("resolveCategoryExecution", () => {
 	test("preserves inline variant from category model string when no explicit variant is configured", async () => {
 		//#given
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -182,7 +182,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				model: "openai/gpt-5.4 high",
 			},
 		}
@@ -214,7 +214,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -224,7 +224,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				model: "openai/gpt-5.4-preview",
 				fallback_models: [
 					{
@@ -260,7 +260,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -270,7 +270,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				fallback_models: [
 					{
 						model: "openai/gpt-5.4",
@@ -314,7 +314,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -324,7 +324,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				fallback_models: [
 					{
 						model: "openai/gpt-5.4",
@@ -365,7 +365,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -375,7 +375,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				fallback_models: [
 					{
 						model: "openai/gpt-5.4",
@@ -411,7 +411,7 @@ describe("resolveCategoryExecution", () => {
 		})
 		const agentsSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["openai"])
 		const args = {
-			category: "deep",
+			category: "visual-engineering",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -421,7 +421,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			deep: {
+			"visual-engineering": {
 				fallback_models: [
 					{
 						model: "openai/gpt-4",
@@ -456,7 +456,7 @@ describe("resolveCategoryExecution", () => {
 	test("does not inherit hardcoded fallbackChain when user configures a category model [regression #3040]", async () => {
 		//#given
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,
@@ -466,7 +466,7 @@ describe("resolveCategoryExecution", () => {
 		}
 		const executorCtx = createMockExecutorContext()
 		executorCtx.userCategories = {
-			quick: {
+			writing: {
 				model: "animal-gateway-xai/grok-4-fast-non-reasoning",
 			},
 		}
@@ -488,7 +488,7 @@ describe("resolveCategoryExecution", () => {
 	test("does not inherit hardcoded fallbackChain when sisyphus-junior model override is set [regression #2941]", async () => {
 		//#given
 		const args = {
-			category: "quick",
+			category: "writing",
 			prompt: "test prompt",
 			description: "Test task",
 			run_in_background: false,

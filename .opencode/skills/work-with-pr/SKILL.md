@@ -94,7 +94,7 @@ Use the git-master skill's atomic commit principles. The reason for atomic commi
 Each commit should pair implementation with its tests. Load `git-master` skill when committing:
 
 ```
-task(category="quick", load_skills=["git-master"], prompt="Commit the changes atomically following git-master conventions. Repository is at {WORKTREE_PATH}.")
+task(subagent_type="general", load_skills=["git-master"], prompt="Commit the changes atomically following git-master conventions. Repository is at {WORKTREE_PATH}.")
 ```
 
 ### Pre-push local validation
@@ -205,7 +205,7 @@ Invoke review-work after CI passes — there's no point reviewing code that does
 
 ```
 task(
-  category="unspecified-high",
+  subagent_type="general",
   load_skills=["review-work"],
   run_in_background=false,
   description="Post-implementation review of PR changes",

@@ -43,7 +43,7 @@ describe("executeUnstableAgentTask timeout handling", () => {
     const args = {
       description: "timeout case",
       prompt: "run",
-      category: "unspecified-low",
+      category: "writing",
       run_in_background: false,
       load_skills: [],
       command: undefined,

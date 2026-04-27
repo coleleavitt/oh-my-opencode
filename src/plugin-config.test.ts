@@ -33,7 +33,7 @@ describe("mergeConfigs", () => {
             model: "openai/gpt-5.4",
             temperature: 0.5,
           },
-          quick: {
+          writing: {
             model: "anthropic/claude-haiku-4-5",
           },
         },
@@ -56,8 +56,7 @@ describe("mergeConfigs", () => {
       expect(result.categories?.general?.model).toBe("openai/gpt-5.4");
       // then general.temperature should be overridden
       expect(result.categories?.general?.temperature).toBe(0.3);
-      // then quick should be preserved from base
-      expect(result.categories?.quick?.model).toBe("anthropic/claude-haiku-4-5");
+      expect(result.categories?.writing?.model).toBe("anthropic/claude-haiku-4-5");
       // then visual should be added from override
       expect(result.categories?.visual?.model).toBe("google/gemini-3.1-pro");
     });

@@ -341,7 +341,7 @@ describe("boulder-state", () => {
         taskTitle: "Implement auth flow",
         sessionId: "ses_task_123",
         agent: "sisyphus-junior",
-        category: "deep",
+        category: "visual-engineering",
       })
       const result = getTaskSessionState(TEST_DIR, "todo:1")
 

@@ -30,20 +30,17 @@ describe("resolveAgentVariant", () => {
   })
 
   test("returns category variant when agent uses category", () => {
-    // given
     const config = {
       agents: {
-        sisyphus: { category: "ultrabrain" },
+        sisyphus: { category: "visual-engineering" },
       },
       categories: {
-        ultrabrain: { model: "openai/gpt-5.4", variant: "xhigh" },
+        "visual-engineering": { model: "google/gemini-3.1-pro", variant: "xhigh" },
       },
     } as OhMyOpenCodeConfig
 
-    // when
     const variant = resolveAgentVariant(config, "sisyphus")
 
-    // then
     expect(variant).toBe("xhigh")
   })
 })
@@ -113,7 +110,8 @@ describe("resolveVariantForModel", () => {
   })
 
   test("returns correct variant for openai provider (hephaestus agent)", () => {
-    // #given hephaestus has openai/gpt-5.4 with variant "medium" in its chain
+    // #given hephaestus has openai/gpt-5.4 with variant "high" in its chain
+    // (bumped from "medium" in commit 6727cd45 — reasoning agents use high/max effort)
     const config = {} as OhMyOpenCodeConfig
     const model = { providerID: "openai", modelID: "gpt-5.4" }
 
@@ -121,11 +119,12 @@ describe("resolveVariantForModel", () => {
     const variant = resolveVariantForModel(config, "hephaestus", model)
 
     // then
-    expect(variant).toBe("medium")
+    expect(variant).toBe("high")
   })
 
-  test("returns medium for openai/gpt-5.4 in sisyphus chain", () => {
-    // #given openai/gpt-5.4 is now in sisyphus fallback chain with variant medium
+  test("returns high for openai/gpt-5.4 in sisyphus chain", () => {
+    // #given openai/gpt-5.4 is in sisyphus fallback chain with variant "high"
+    // (bumped from "medium" in commit 6727cd45)
     const config = {} as OhMyOpenCodeConfig
     const model = { providerID: "openai", modelID: "gpt-5.4" }
 
@@ -133,7 +132,7 @@ describe("resolveVariantForModel", () => {
     const variant = resolveVariantForModel(config, "sisyphus", model)
 
     // then
-    expect(variant).toBe("medium")
+    expect(variant).toBe("high")
   })
 
   test("returns undefined for provider not in chain", () => {
@@ -173,23 +172,21 @@ describe("resolveVariantForModel", () => {
   })
 
   test("falls back to category chain when agent has no requirement", () => {
-    // given
     const config = {
       agents: {
-        "custom-agent": { category: "ultrabrain" },
+        "custom-agent": { category: "visual-engineering" },
       },
     } as OhMyOpenCodeConfig
-    const model = { providerID: "openai", modelID: "gpt-5.4" }
+    const model = { providerID: "google", modelID: "gemini-3.1-pro" }
 
-    // when
     const variant = resolveVariantForModel(config, "custom-agent", model)
 
-    // then
-    expect(variant).toBe("xhigh")
+    expect(variant).toBe("high")
   })
 
   test("returns correct variant for oracle agent with openai", () => {
-    // given
+    // given — oracle has openai/gpt-5.4 with variant "max"
+    // (bumped from "high" in commit 6727cd45 — oracle is the high-IQ reasoner)
     const config = {} as OhMyOpenCodeConfig
     const model = { providerID: "openai", modelID: "gpt-5.4" }
 
@@ -197,7 +194,7 @@ describe("resolveVariantForModel", () => {
     const variant = resolveVariantForModel(config, "oracle", model)
 
     // then
-    expect(variant).toBe("high")
+    expect(variant).toBe("max")
   })
 
   test("returns correct variant for oracle agent with anthropic", () => {

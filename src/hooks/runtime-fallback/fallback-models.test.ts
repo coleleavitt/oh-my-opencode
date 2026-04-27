@@ -11,10 +11,10 @@ describe("runtime-fallback fallback-models", () => {
   test("uses category fallback_models when session category is registered", () => {
     //#given
     const sessionID = "ses_runtime_fallback_category"
-    SessionCategoryRegistry.register(sessionID, "quick")
+    SessionCategoryRegistry.register(sessionID, "writing")
     const pluginConfig = {
       categories: {
-        quick: {
+        writing: {
           fallback_models: ["openai/gpt-5.2", "anthropic/claude-opus-4-6"],
         },
       },

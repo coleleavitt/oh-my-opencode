@@ -160,10 +160,10 @@ task(session_id="ses_abc123", load_skills=[], prompt="Here's my answer to your q
 task(category="visual-engineering", load_skills=["frontend-ui-ux"])
 
 // Complex logic
-task(category="ultrabrain", load_skills=["typescript-programmer"])
+task(subagent_type="general", load_skills=["typescript-programmer"])
 
 // Quick fixes
-task(category="quick", load_skills=["git-master"])
+task(subagent_type="general", load_skills=["git-master"])
 \`\`\`
 
 **YOU SHOULD ONLY DO IT YOURSELF WHEN:**

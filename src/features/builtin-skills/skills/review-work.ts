@@ -3,7 +3,7 @@ import type { BuiltinSkill } from "../types"
 export const reviewWorkSkill: BuiltinSkill = {
 	name: "review-work",
 	description:
-		"Post-implementation review orchestrator. Launches 5 parallel background sub-agents: Oracle (goal/constraint verification), Oracle (code quality), Oracle (security), unspecified-high (hands-on QA execution), unspecified-high (context mining from GitHub/git/Slack/Notion). All must pass for review to pass. MUST USE after completing any significant implementation work. Triggers: 'review work', 'review my work', 'review changes', 'QA my work', 'verify implementation', 'check my work', 'validate changes', 'post-implementation review'.",
+		"Post-implementation review orchestrator. Launches 5 parallel background sub-agents: Oracle (goal/constraint verification), Oracle (code quality), Oracle (security), general (hands-on QA execution), general (context mining from GitHub/git/Slack/Notion). All must pass for review to pass. MUST USE after completing any significant implementation work. Triggers: 'review work', 'review my work', 'review changes', 'QA my work', 'verify implementation', 'check my work', 'validate changes', 'post-implementation review'.",
 	template: `# Review Work - 5-Agent Parallel Review Orchestrator
 
 Launch 5 specialized sub-agents in parallel to review completed implementation work from every angle. All 5 must pass for the review to pass. If even ONE fails, the review fails.
@@ -13,10 +13,10 @@ The 5 agents cover complementary concerns - together they form a comprehensive r
 | # | Agent | Type | Role | Focus Level |
 |---|-------|------|------|-------------|
 | 1 | Goal Verifier | Oracle | Did we build what was asked? | MAIN |
-| 2 | QA Executor | unspecified-high | Does it actually work? | MAIN |
+| 2 | QA Executor | general | Does it actually work? | MAIN |
 | 3 | Code Reviewer | Oracle | Is the code well-written? | MAIN |
 | 4 | Security Auditor | Oracle | Is it secure? | SUB |
-| 5 | Context Miner | unspecified-high | Did we miss any context? | MAIN |
+| 5 | Context Miner | general | Did we miss any context? | MAIN |
 
 ---
 
@@ -64,7 +64,7 @@ Launch ALL 5 in a single turn. Every agent uses \`run_in_background=true\`. No s
 
 **Oracle agents receive everything in the prompt** (they cannot read files or run commands). Include DIFF + FILE_CONTENTS + all context directly in the prompt text.
 
-**unspecified-high agents are autonomous** - they can read files, run commands, and use tools. Give them goals and pointers, not raw content dumps.
+**general agents are autonomous** - they can read files, run commands, and use tools. Give them goals and pointers, not raw content dumps.
 
 ---
 
@@ -145,7 +145,7 @@ OUTPUT FORMAT:
 
 ---
 
-### Agent 2: QA via App Execution (unspecified-high) - MAIN
+### Agent 2: QA via App Execution (general) - MAIN
 
 This agent answers: "Does it actually work when you run it?"
 
@@ -153,7 +153,7 @@ The QA agent follows a structured process: brainstorm scenarios exhaustively fir
 
 \`\`\`
 task(
-  category="unspecified-high",
+  subagent_type="general",
   run_in_background=true,
   load_skills=["playwright", "dev-browser"],
   description="QA by actually running and using the application",
@@ -390,13 +390,13 @@ OUTPUT FORMAT:
 
 ---
 
-### Agent 5: Context Mining (unspecified-high) - MAIN
+### Agent 5: Context Mining (general) - MAIN
 
 This agent answers: "Did we miss any context that should have informed this implementation?"
 
 \`\`\`
 task(
-  category="unspecified-high",
+  subagent_type="general",
   run_in_background=true,
   load_skills=["git-master"],
   description="Mine all accessible contexts for missed requirements or background knowledge",
@@ -514,10 +514,10 @@ Compile the final report in this format:
 | # | Review Area | Agent Type | Verdict | Confidence |
 |---|------------|------------|---------|------------|
 | 1 | Goal & Constraint Verification | Oracle | PASS/FAIL | HIGH/MED/LOW |
-| 2 | QA Execution | unspecified-high | PASS/FAIL | HIGH/MED/LOW |
+| 2 | QA Execution | general | PASS/FAIL | HIGH/MED/LOW |
 | 3 | Code Quality | Oracle | PASS/FAIL | HIGH/MED/LOW |
 | 4 | Security (supplementary) | Oracle | PASS/FAIL | Severity |
-| 5 | Context Mining | unspecified-high | PASS/FAIL | HIGH/MED/LOW |
+| 5 | Context Mining | general | PASS/FAIL | HIGH/MED/LOW |
 
 ## Blocking Issues
 [Aggregated from all agents - deduplicated, prioritized]

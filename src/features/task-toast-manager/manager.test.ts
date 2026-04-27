@@ -291,7 +291,7 @@ describe("TaskToastManager", () => {
         description: "Build UI component",
         agent: "sisyphus-junior",
         isBackground: true,
-        category: "deep",
+        category: "visual-engineering",
         modelInfo: { model: "openai/gpt-5.4", type: "category-default" as const },
       }
 
@@ -330,7 +330,7 @@ describe("TaskToastManager", () => {
         description: "Quick fix",
         agent: "sisyphus-junior",
         isBackground: true,
-        category: "quick",
+        category: "writing",
       }
 
       // when - addTask is called
@@ -372,7 +372,7 @@ describe("TaskToastManager", () => {
         description: "Running task",
         agent: "sisyphus-junior",
         isBackground: true,
-        category: "deep",
+        category: "visual-engineering",
         modelInfo: { model: "openai/gpt-5.3-codex", type: "category-default" as const },
       })
       limitedManager.addTask({
@@ -380,7 +380,7 @@ describe("TaskToastManager", () => {
         description: "Queued task",
         agent: "sisyphus-junior",
         isBackground: true,
-        category: "quick",
+        category: "writing",
         status: "queued",
         modelInfo: { model: "anthropic/claude-haiku-4-5", type: "category-default" as const },
       })

@@ -194,7 +194,7 @@ describe("createToolExecuteAfterHandler background launch detection", () => {
           metadata: {
             sessionId: childSessionID,
             agent: "sisyphus-junior",
-            category: "deep",
+            category: "visual-engineering",
           },
         }
 
@@ -271,7 +271,7 @@ describe("createToolExecuteAfterHandler background launch detection", () => {
           metadata: {
             sessionId: childSessionID,
             agent: "sisyphus-junior",
-            category: "deep",
+            category: "visual-engineering",
           },
         }
 
@@ -341,7 +341,7 @@ describe("createToolExecuteAfterHandler background launch detection", () => {
           metadata: {
             sessionId: childSessionID,
             agent: "sisyphus-junior",
-            category: "deep",
+            category: "visual-engineering",
           },
         }
 
@@ -412,7 +412,7 @@ describe("createToolExecuteAfterHandler background launch detection", () => {
           metadata: {
             sessionId: childSessionID,
             agent: "sisyphus-junior",
-            category: "deep",
+            category: "visual-engineering",
           },
         }
 

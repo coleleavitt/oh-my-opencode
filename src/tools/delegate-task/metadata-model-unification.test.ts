@@ -40,7 +40,7 @@ describe("metadata model unification", () => {
         }
         const args: DelegateTaskArgs = {
           description: "test", prompt: "do it",
-          category: "quick", load_skills: [], run_in_background: false,
+          category: "writing", load_skills: [], run_in_background: false,
         }
 
         await executeSyncTask(args, ctx, {
@@ -82,7 +82,7 @@ describe("metadata model unification", () => {
         const ctx = makeMockCtx()
         const args: DelegateTaskArgs = {
           description: "test", prompt: "do it",
-          category: "quick", load_skills: [], run_in_background: false,
+          category: "writing", load_skills: [], run_in_background: false,
         }
 
         const launchedTask = {

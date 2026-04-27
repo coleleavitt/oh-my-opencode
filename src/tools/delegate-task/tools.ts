@@ -67,7 +67,7 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
   
   **CORRECT - Using category:**
   \`\`\`
-  task(category="quick", load_skills=[], description="Fix type error", prompt="...", run_in_background=false)
+  task(subagent_type="general", load_skills=[], description="Fix type error", prompt="...", run_in_background=false)
   \`\`\`
   
   **CORRECT - Using subagent_type:**
@@ -119,13 +119,19 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       const ctx = toolContext as ToolContextWithMetadata
 
       if (args.category) {
-        if (args.subagent_type && args.subagent_type !== SISYPHUS_JUNIOR_AGENT) {
-          log("[task] category provided - overriding subagent_type to sisyphus-junior", {
+        if (args.subagent_type && args.subagent_type.trim().length > 0) {
+          // Phase C1 (cc119-async-fork-alias plan): respect both. Category sets the
+          // model tier; subagent_type stays orthogonal. This decouples model-choice
+          // from agent-choice — you can pair any agent (explore, librarian, fork...)
+          // with any category. Backward-compat: when subagent_type is omitted,
+          // category-only calls still fall back to sisyphus-junior below.
+          log("[task] category + subagent_type both provided - keeping both (Phase C1)", {
             category: args.category,
             subagent_type: args.subagent_type,
           })
+        } else {
+          args.subagent_type = SISYPHUS_JUNIOR_AGENT
         }
-        args.subagent_type = SISYPHUS_JUNIOR_AGENT
       }
       // Auto-generate description from prompt when missing or empty
       if (!args.description || typeof args.description !== "string" || args.description.trim() === "") {

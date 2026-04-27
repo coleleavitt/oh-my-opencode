@@ -77,16 +77,16 @@ describe("createBuiltinSkills", () => {
 		}
 	})
 
-	test("returns exactly 6 skills regardless of provider", () => {
-		// given
+	test("returns exactly 12 skills regardless of provider", () => {
+		// given - 6 base skills + 6 argus family skills (commit 86a3e9c0 added argus-*)
 
 		// when
 		const defaultSkills = createBuiltinSkills()
 		const agentBrowserSkills = createBuiltinSkills({ browserProvider: "agent-browser" })
 
 		// then
-		expect(defaultSkills).toHaveLength(6)
-		expect(agentBrowserSkills).toHaveLength(6)
+		expect(defaultSkills).toHaveLength(12)
+		expect(agentBrowserSkills).toHaveLength(12)
 	})
 
 	test("should exclude playwright when it is in disabledSkills", () => {
@@ -103,7 +103,7 @@ describe("createBuiltinSkills", () => {
 		expect(skills.map((s) => s.name)).toContain("dev-browser")
 		expect(skills.map((s) => s.name)).toContain("review-work")
 		expect(skills.map((s) => s.name)).toContain("ai-slop-remover")
-		expect(skills.length).toBe(5)
+		expect(skills.length).toBe(11)
 	})
 
 	test("should exclude multiple skills when they are in disabledSkills", () => {
@@ -120,13 +120,26 @@ describe("createBuiltinSkills", () => {
 		expect(skills.map((s) => s.name)).toContain("dev-browser")
 		expect(skills.map((s) => s.name)).toContain("review-work")
 		expect(skills.map((s) => s.name)).toContain("ai-slop-remover")
-		expect(skills.length).toBe(4)
+		expect(skills.length).toBe(10)
 	})
 
 	test("should return an empty array when all skills are disabled", () => {
-		// #given
+		// #given - all 12 builtin skills (6 base + 6 argus family)
 		const options = {
-			disabledSkills: new Set(["playwright", "frontend-ui-ux", "git-master", "dev-browser", "review-work", "ai-slop-remover"]),
+			disabledSkills: new Set([
+				"playwright",
+				"frontend-ui-ux",
+				"git-master",
+				"dev-browser",
+				"review-work",
+				"ai-slop-remover",
+				"argus-review",
+				"argus-pr",
+				"argus-commit",
+				"argus-security",
+				"argus-custom",
+				"argus-plan",
+			]),
 		}
 
 		// #when
@@ -144,7 +157,7 @@ describe("createBuiltinSkills", () => {
 		const skills = createBuiltinSkills(options)
 
 		// #then
-		expect(skills.length).toBe(6)
+		expect(skills.length).toBe(12)
 	})
 
 	test("review-work skill has correct structure", () => {

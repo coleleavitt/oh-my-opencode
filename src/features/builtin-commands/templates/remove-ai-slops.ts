@@ -29,7 +29,7 @@ If \`git symbolic-ref refs/remotes/origin/HEAD\` is unavailable, detect the base
 For each changed file, spawn an agent in parallel using the Task tool with the ai-slop-remover skill:
 
 \`\`\`
-task(category="quick", load_skills=["ai-slop-remover"], run_in_background=true, description="Remove AI slops from {filename}", prompt="Remove AI slops from: {file_path}")
+task(subagent_type="general", load_skills=["ai-slop-remover"], run_in_background=true, description="Remove AI slops from {filename}", prompt="Remove AI slops from: {file_path}")
 \`\`\`
 
 **CRITICAL**: Launch ALL agents in a SINGLE message with multiple Task tool calls for maximum parallelism.

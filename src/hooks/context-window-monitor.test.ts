@@ -41,10 +41,12 @@ describe("context-window-monitor", () => {
     ctx = createMockCtx()
     delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
     delete process.env[VERTEX_CONTEXT_ENV_KEY]
+    process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
   })
 
   afterEach(() => {
     resetContextLimitEnv()
+    delete process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK
   })
 
   // #given event caches token info from message.updated

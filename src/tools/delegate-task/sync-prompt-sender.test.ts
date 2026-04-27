@@ -77,7 +77,7 @@ bunDescribe("sendSyncPrompt", () => {
       args: {
         description: "test task",
         prompt: "test prompt",
-        category: "quick",
+        category: "writing",
         run_in_background: false,
         load_skills: [],
       },
@@ -117,7 +117,7 @@ bunDescribe("sendSyncPrompt", () => {
       args: {
         description: "test task",
         prompt: "test prompt",
-        category: "quick",
+        category: "writing",
         run_in_background: false,
         load_skills: [],
       },
@@ -157,7 +157,7 @@ bunDescribe("sendSyncPrompt", () => {
       args: {
         description: "test task",
         prompt: "test prompt",
-        category: "quick",
+        category: "writing",
         run_in_background: false,
         load_skills: [],
       },
@@ -197,7 +197,7 @@ bunDescribe("sendSyncPrompt", () => {
       args: {
         description: "test task",
         prompt: "test prompt",
-        category: "quick",
+        category: "writing",
         run_in_background: false,
         load_skills: [],
       },
@@ -216,7 +216,7 @@ bunDescribe("sendSyncPrompt", () => {
 
     //#then
     bunExpect(promptAsync).toHaveBeenCalled()
-    bunExpect(promptArgs.body.agent).toBe("sisyphus-junior")
+    bunExpect(promptArgs.body.agent).toBe("Sisyphus-Junior")
     bunExpect(promptArgs.body.model).toEqual({
       providerID: "openai",
       modelID: "gpt-5.4",
@@ -305,7 +305,7 @@ bunDescribe("sendSyncPrompt", () => {
       args: {
         description: "test task",
         prompt: "test prompt",
-        category: "quick",
+        category: "writing",
         run_in_background: false,
         load_skills: [],
       },

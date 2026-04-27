@@ -7,7 +7,7 @@ function createArgs() {
   return {
     description: "cleanup case",
     prompt: "run",
-    category: "unspecified-low",
+    category: "writing",
     run_in_background: false,
     load_skills: [],
     command: undefined,

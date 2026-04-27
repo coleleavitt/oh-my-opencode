@@ -798,9 +798,10 @@ You are starting a Sisyphus work session.
       const startWorkHook = createStartWorkHook(ctx)
       const atlasHook = createAtlasHook(ctx, {
         directory: testDir,
-        backgroundManager: {
-          getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
-        } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"],
+      backgroundManager: {
+        getTasksByParentSession: () => backgroundRunning ? [{ status: "running" }] : [],
+        isSessionSettled: () => !backgroundRunning,
+      } as unknown as NonNullable<Parameters<typeof createAtlasHook>[1]>["backgroundManager"],
       })
       const output = {
         message: {} as Record<string, unknown>,

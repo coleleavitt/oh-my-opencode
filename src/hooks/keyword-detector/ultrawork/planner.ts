@@ -107,7 +107,7 @@ Each TODO item MUST include:
   **Parallel Group**: Wave N (with Tasks X, Y)
   
   **Recommended Agent Profile**:
-  - **Category**: \`[visual-engineering | ultrabrain | artistry | quick | unspecified-low | unspecified-high | writing]\`
+  - **Category**: \`[visual-engineering | artistry | writing]\` (or use \`subagent_type\` like \`general\`/\`oracle\` and set \`model\` directly for cost tier)
   - **Skills**: [\`skill-1\`, \`skill-2\`]
   
   **Acceptance Criteria**: [Verifiable conditions]

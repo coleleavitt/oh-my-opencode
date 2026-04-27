@@ -867,22 +867,15 @@ describe("migrateAgentConfigToCategory", () => {
   })
 
   test("handles all mapped models correctly", () => {
-    // given: Configs for each mapped model
     const configs = [
       { model: "google/gemini-3.1-pro" },
       { model: "google/gemini-3-flash" },
-      { model: "openai/gpt-5.4" },
-      { model: "anthropic/claude-haiku-4-5" },
-      { model: "anthropic/claude-opus-4-6" },
-      { model: "anthropic/claude-sonnet-4-6" },
     ]
 
-    const expectedCategories = ["visual-engineering", "writing", "ultrabrain", "quick", "unspecified-high", "unspecified-low"]
+    const expectedCategories = ["visual-engineering", "writing"]
 
-    // when: Migrate each config
     const results = configs.map(migrateAgentConfigToCategory)
 
-    // then: Each model should map to correct category
     results.forEach((result, index) => {
       expect(result.changed).toBe(true)
       expect(result.migrated.category).toBe(expectedCategories[index])
@@ -891,20 +884,17 @@ describe("migrateAgentConfigToCategory", () => {
   })
 
   test("preserves non-model fields during migration", () => {
-    // given: Config with multiple fields
     const config = {
-      model: "openai/gpt-5.4",
+      model: "google/gemini-3.1-pro",
       temperature: 0.1,
       top_p: 0.95,
       maxTokens: 4096,
       prompt_append: "custom instruction",
     }
 
-    // when: Migrate agent config to category
     const { migrated } = migrateAgentConfigToCategory(config)
 
-    // then: All non-model fields should be preserved
-    expect(migrated.category).toBe("ultrabrain")
+    expect(migrated.category).toBe("visual-engineering")
     expect(migrated.temperature).toBe(0.1)
     expect(migrated.top_p).toBe(0.95)
     expect(migrated.maxTokens).toBe(4096)
@@ -964,18 +954,14 @@ describe("shouldDeleteAgentConfig", () => {
   })
 
   test("handles different categories with their defaults", () => {
-    // given: Configs for different categories
     const configs = [
-      { category: "ultrabrain" },
-      { category: "quick" },
-      { category: "unspecified-high" },
-      { category: "unspecified-low" },
+      { category: "visual-engineering" },
+      { category: "artistry" },
+      { category: "writing" },
     ]
 
-    // when: Check each config
     const results = configs.map((config) => shouldDeleteAgentConfig(config, config.category as string))
 
-    // then: All should be true (all match defaults)
     results.forEach((result) => {
       expect(result).toBe(true)
     })
@@ -1091,23 +1077,21 @@ describe("migrateConfigFile with backup", () => {
     const testConfigPath = "/tmp/test-config-preserve-category.json"
     const rawConfig: Record<string, unknown> = {
       agents: {
-        "multimodal-looker": { category: "quick" },
-        oracle: { category: "ultrabrain" },
+        "multimodal-looker": { category: "writing" },
+        oracle: { category: "artistry" },
       },
     }
 
     fs.writeFileSync(testConfigPath, globalThis.JSON.stringify(rawConfig, null, 2))
     cleanupPaths.push(testConfigPath)
 
-    // when: Migrate config file
     const needsWrite = migrateConfigFile(testConfigPath, rawConfig)
 
-    // then: No migration needed - category settings should be preserved as-is
     expect(needsWrite).toBe(false)
 
     const agents = rawConfig.agents as Record<string, Record<string, unknown>>
-    expect(agents["multimodal-looker"].category).toBe("quick")
-    expect(agents.oracle.category).toBe("ultrabrain")
+    expect(agents["multimodal-looker"].category).toBe("writing")
+    expect(agents.oracle.category).toBe("artistry")
   })
 
   test("does not write or create backups for experimental.task_system", () => {

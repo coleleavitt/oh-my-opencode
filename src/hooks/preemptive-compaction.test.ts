@@ -2,6 +2,11 @@
 
 import { afterAll, describe, it, expect, mock, beforeEach, afterEach } from "bun:test"
 
+// Test hermeticity: skip reading real ~/.config/opencode/anthropic-accounts.json
+// which may have context1m=true on dev machines (would make limit=1M, hiding the
+// 78% threshold and preventing summarize() from being called in these tests).
+process.env.OMO_SKIP_ANTHROPIC_ACCOUNTS_CHECK = "1"
+
 const ANTHROPIC_CONTEXT_ENV_KEY = "ANTHROPIC_1M_CONTEXT"
 const VERTEX_CONTEXT_ENV_KEY = "VERTEX_ANTHROPIC_1M_CONTEXT"
 

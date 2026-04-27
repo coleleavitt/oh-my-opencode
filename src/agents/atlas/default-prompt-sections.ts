@@ -219,9 +219,9 @@ task(category="...", load_skills=[...], run_in_background=false, ...)
 **Parallel task groups**: Invoke multiple in ONE message
 \`\`\`typescript
 // Tasks 2, 3, 4 are independent - invoke together
-task(category="quick", load_skills=[], run_in_background=false, prompt="Task 2...")
-task(category="quick", load_skills=[], run_in_background=false, prompt="Task 3...")
-task(category="quick", load_skills=[], run_in_background=false, prompt="Task 4...")
+task(subagent_type="general", load_skills=[], run_in_background=false, prompt="Task 2...")
+task(subagent_type="general", load_skills=[], run_in_background=false, prompt="Task 3...")
+task(subagent_type="general", load_skills=[], run_in_background=false, prompt="Task 4...")
 \`\`\`
 
 **Background management**:

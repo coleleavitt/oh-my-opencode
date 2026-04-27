@@ -193,9 +193,7 @@ export function buildParallelDelegationSection(
   categories: AvailableCategory[],
 ): string {
   const isNonClaude = !model.toLowerCase().includes("claude")
-  const hasDelegationCategory = categories.some(
-    (category) => category.name === "deep" || category.name === "unspecified-high",
-  )
+  const hasDelegationCategory = categories.length > 0
 
   if (!isNonClaude || !hasDelegationCategory) {
     return ""
@@ -208,7 +206,7 @@ export function buildParallelDelegationSection(
 **MANDATORY - for ANY implementation task:**
 
 1. **ALWAYS decompose** the task into independent work units. No exceptions. Even if the task "feels small", decompose it.
-2. **ALWAYS delegate** EACH unit to a \`deep\` or \`unspecified-high\` agent in parallel (\`run_in_background=true\`).
+2. **ALWAYS delegate** EACH unit to a category-matched agent in parallel (\`run_in_background=true\`). Set \`model\` directly on the call when you need a specific cost/quality tier.
 3. **NEVER work sequentially.** If 4 independent units exist, spawn 4 agents simultaneously. Not 1 at a time. Not 2 then 2.
 4. **NEVER implement directly** when delegation is possible. You write prompts, not code.
 
@@ -222,7 +220,7 @@ export function buildParallelDelegationSection(
 
 | You Want To Do | You MUST Do Instead |
 |---|---|
-| Write code yourself | Delegate to \`deep\` or \`unspecified-high\` agent |
+| Write code yourself | Delegate to a category-matched agent (set \`model\` for cost tier) |
 | Handle 3 changes sequentially | Spawn 3 agents in parallel |
 | "Quickly fix this one thing" | Still delegate - your "quick fix" is slower and worse than a subagent's |
 

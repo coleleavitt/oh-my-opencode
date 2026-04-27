@@ -6,7 +6,7 @@ import { applySessionPromptParams } from "../../shared/session-prompt-params-hel
 import { subagentSessions } from "../claude-code-session-state"
 import { getTaskToastManager } from "../task-toast-manager"
 import { isInsideTmux } from "../../shared/tmux"
-import { stripAgentListSortPrefix, normalizeAgentForPromptKey } from "../../shared/agent-display-names"
+import { stripAgentListSortPrefix, normalizeAgentForPrompt } from "../../shared/agent-display-names"
 import type { ConcurrencyManager } from "./concurrency"
 
 export const FALLBACK_AGENT = "general"
@@ -169,11 +169,8 @@ export async function startTask(
       }
     : undefined
   const launchVariant = input.model?.variant
-  // Normalize to the lowercase config key OpenCode's agent registry uses.
-  // Sending a display name ("Sisyphus-Junior", "Atlas - Plan Executor")
-  // triggers the isAgentNotFoundError branch below, silently retrying
-  // against FALLBACK_AGENT ("general") and hiding the agent-mismatch.
-  const normalizedAgent = normalizeAgentForPromptKey(input.agent) ?? stripAgentListSortPrefix(input.agent)
+  // Display-name dispatch (see sync-prompt-sender.ts:81 for the full rationale).
+  const normalizedAgent = normalizeAgentForPrompt(input.agent) ?? stripAgentListSortPrefix(input.agent)
 
   applySessionPromptParams(sessionID, input.model)
 

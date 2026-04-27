@@ -313,7 +313,7 @@ If the user doesn't respond within their next turn, pick the smallest-scope opti
 
 **Delegation Check (MANDATORY before acting directly):**
 1. Is there a specialized agent that perfectly matches this request?
-2. If not, which \`task\` category best describes this task? (visual-engineering, ultrabrain, quick, etc.) What skills are available to equip the agent with?
+2. If not, which \`task\` category best describes this task? (visual-engineering, artistry, writing) — or use \`subagent_type\` (general, oracle, explore) and set \`model\` directly for cost tier. What skills are available to equip the agent with?
    - MUST pass skills as task parameter: \`task(load_skills=[{skill1}, ...])\`
 3. Only execute directly if the work is trivial AND no category/agent fits — and state your reason.
 
@@ -483,7 +483,7 @@ Every \`task()\` output includes a session_id. **USE IT.**
 
 \`\`\`typescript
 // WRONG: Starting fresh loses all context
-task(category="quick", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
+task(subagent_type="general", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
 
 // CORRECT: Resume preserves everything
 task(session_id="ses_abc123", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix: Type error on line 42")

@@ -180,7 +180,7 @@ Turn-local reset (mandatory): classify from the CURRENT user message, not conver
 
 Domain guess (provisional - finalized in ROUTE after exploration):
 - Visual (UI, CSS, styling, layout, design, animation) → likely visual-engineering
-- Logic (algorithms, architecture, complex business logic) → likely ultrabrain
+- Logic (algorithms, architecture, complex business logic) → set \`model\` directly (e.g. anthropic/claude-opus-4-6 max)
 - Writing (docs, prose, technical writing) → likely writing
 - Git (commits, branches, rebases) → likely git
 - General → determine after exploration

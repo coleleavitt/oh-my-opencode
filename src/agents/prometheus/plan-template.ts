@@ -100,39 +100,39 @@ Evidence saved to \`.sisyphus/evidence/task-{N}-{scenario-slug}.{ext}\`.
 
 \`\`\`
 Wave 1 (Start Immediately - foundation + scaffolding):
-├── Task 1: Project scaffolding + config [quick]
-├── Task 2: Design system tokens [quick]
-├── Task 3: Type definitions [quick]
-├── Task 4: Schema definitions [quick]
-├── Task 5: Storage interface + in-memory impl [quick]
-├── Task 6: Auth middleware [quick]
-└── Task 7: Client module [quick]
+├── Task 1: Project scaffolding + config [general]
+├── Task 2: Design system tokens [writing]
+├── Task 3: Type definitions [general]
+├── Task 4: Schema definitions [general]
+├── Task 5: Storage interface + in-memory impl [general]
+├── Task 6: Auth middleware [general]
+└── Task 7: Client module [general]
 
 Wave 2 (After Wave 1 - core modules, MAX PARALLEL):
-├── Task 8: Core business logic (depends: 3, 5, 7) [deep]
-├── Task 9: API endpoints (depends: 4, 5) [unspecified-high]
-├── Task 10: Secondary storage impl (depends: 5) [unspecified-high]
-├── Task 11: Retry/fallback logic (depends: 8) [deep]
+├── Task 8: Core business logic (depends: 3, 5, 7) [general]
+├── Task 9: API endpoints (depends: 4, 5) [general]
+├── Task 10: Secondary storage impl (depends: 5) [general]
+├── Task 11: Retry/fallback logic (depends: 8) [general]
 ├── Task 12: UI layout + navigation (depends: 2) [visual-engineering]
-├── Task 13: API client + hooks (depends: 4) [quick]
-└── Task 14: Telemetry middleware (depends: 5, 10) [unspecified-high]
+├── Task 13: API client + hooks (depends: 4) [general]
+└── Task 14: Telemetry middleware (depends: 5, 10) [general]
 
 Wave 3 (After Wave 2 - integration + UI):
-├── Task 15: Main route combining modules (depends: 6, 11, 14) [deep]
+├── Task 15: Main route combining modules (depends: 6, 11, 14) [general]
 ├── Task 16: UI data visualization (depends: 12, 13) [visual-engineering]
-├── Task 17: Deployment config A (depends: 15) [quick]
-├── Task 18: Deployment config B (depends: 15) [quick]
-├── Task 19: Deployment config C (depends: 15) [quick]
+├── Task 17: Deployment config A (depends: 15) [general]
+├── Task 18: Deployment config B (depends: 15) [general]
+├── Task 19: Deployment config C (depends: 15) [general]
 └── Task 20: UI request log + build (depends: 16) [visual-engineering]
 
-Wave FINAL (After ALL tasks \u2014 4 parallel reviews, then user okay):
-\u251c\u2500\u2500 Task F1: Plan compliance audit (oracle)
-\u251c\u2500\u2500 Task F2: Code quality review (unspecified-high)
-\u251c\u2500\u2500 Task F3: Real manual QA (unspecified-high)
-\u2514\u2500\u2500 Task F4: Scope fidelity check (deep)
+Wave FINAL (After ALL tasks — 4 parallel reviews, then user okay):
+├── Task F1: Plan compliance audit (oracle)
+├── Task F2: Code quality review (general)
+├── Task F3: Real manual QA (general)
+└── Task F4: Scope fidelity check (general)
 -> Present results -> Get explicit user okay
 
-Critical Path: Task 1 \u2192 Task 5 \u2192 Task 8 \u2192 Task 11 \u2192 Task 15 \u2192 Task 21 \u2192 F1-F4 \u2192 user okay
+Critical Path: Task 1 → Task 5 → Task 8 → Task 11 → Task 15 → Task 21 → F1-F4 → user okay
 Parallel Speedup: ~70% faster than sequential
 Max Concurrent: 7 (Waves 1 & 2)
 \`\`\`
@@ -150,11 +150,11 @@ Max Concurrent: 7 (Waves 1 & 2)
 
 ### Agent Dispatch Summary
 
-- **1**: **7** - T1-T4 → \`quick\`, T5 → \`quick\`, T6 → \`quick\`, T7 → \`quick\`
-- **2**: **7** - T8 → \`deep\`, T9 → \`unspecified-high\`, T10 → \`unspecified-high\`, T11 → \`deep\`, T12 → \`visual-engineering\`, T13 → \`quick\`, T14 → \`unspecified-high\`
-- **3**: **6** - T15 → \`deep\`, T16 → \`visual-engineering\`, T17-T19 → \`quick\`, T20 → \`visual-engineering\`
-- **4**: **4** - T21 → \`deep\`, T22 → \`unspecified-high\`, T23 → \`deep\`, T24 → \`git\`
-- **FINAL**: **4** - F1 → \`oracle\`, F2 → \`unspecified-high\`, F3 → \`unspecified-high\`, F4 → \`deep\`
+- **1**: **7** - T1, T3-T7 → \`general\`, T2 → \`writing\`
+- **2**: **7** - T8-T11, T13-T14 → \`general\`, T12 → \`visual-engineering\`
+- **3**: **6** - T15, T17-T19 → \`general\`, T16, T20 → \`visual-engineering\`
+- **4**: **4** - T21-T23 → \`general\`, T24 → \`git\`
+- **FINAL**: **4** - F1 → \`oracle\`, F2-F4 → \`general\`
 
 ---
 
@@ -175,7 +175,7 @@ Max Concurrent: 7 (Waves 1 & 2)
 
   **Recommended Agent Profile**:
   > Select category + skills based on task domain. Justify each choice.
-  - **Category**: \`[visual-engineering | ultrabrain | artistry | quick | unspecified-low | unspecified-high | writing]\`
+  - **Category**: \`[visual-engineering | artistry | writing]\` (or use \`subagent_type\` like \`general\`/\`oracle\` and set \`model\` directly for cost tier)
     - Reason: [Why this category fits the task domain]
   - **Skills**: [\`skill-1\`, \`skill-2\`]
     - \`skill-1\`: [Why needed - domain overlap explanation]
@@ -288,15 +288,15 @@ Max Concurrent: 7 (Waves 1 & 2)
   Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, curl endpoint, run command). For each "Must NOT Have": search codebase for forbidden patterns \u2014 reject with file:line if found. Check evidence files exist in .sisyphus/evidence/. Compare deliverables against plan.
   Output: \`Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT\`
 
-- [ ] F2. **Code Quality Review** \u2014 \`unspecified-high\`
+- [ ] F2. **Code Quality Review** \u2014 \`general\`
   Run \`tsc --noEmit\` + linter + \`bun test\`. Review all changed files for: \`as any\`/\`@ts-ignore\`, empty catches, console.log in prod, commented-out code, unused imports. Check AI slop: excessive comments, over-abstraction, generic names (data/result/item/temp).
   Output: \`Build [PASS/FAIL] | Lint [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT\`
 
-- [ ] F3. **Real Manual QA** \u2014 \`unspecified-high\` (+ \`playwright\` skill if UI)
+- [ ] F3. **Real Manual QA** \u2014 \`general\` (+ \`playwright\` skill if UI)
   Start from clean state. Execute EVERY QA scenario from EVERY task \u2014 follow exact steps, capture evidence. Test cross-task integration (features working together, not isolation). Test edge cases: empty state, invalid input, rapid actions. Save to \`.sisyphus/evidence/final-qa/\`.
   Output: \`Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT\`
 
-- [ ] F4. **Scope Fidelity Check** \u2014 \`deep\`
+- [ ] F4. **Scope Fidelity Check** \u2014 \`general\`
   For each task: read "What to do", read actual diff (git log/diff). Verify 1:1 \u2014 everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance. Detect cross-task contamination: Task N touching Task M's files. Flag unaccounted changes.
   Output: \`Tasks [N/N compliant] | Contamination [CLEAN/N issues] | Unaccounted [CLEAN/N files] | VERDICT\`
 

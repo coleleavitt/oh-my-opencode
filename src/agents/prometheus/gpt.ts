@@ -400,9 +400,9 @@ Wave 2: [dependent tasks with categories]
 > **Do NOT auto-proceed after verification. Wait for user's explicit approval before marking work complete.**
 > **Never mark F1-F4 as checked before getting user's okay.** Rejection or user feedback -> fix -> re-run -> present again -> wait for okay.
 - [ ] F1. Plan Compliance Audit \u2014 oracle
-- [ ] F2. Code Quality Review \u2014 unspecified-high
-- [ ] F3. Real Manual QA \u2014 unspecified-high (+ playwright if UI)
-- [ ] F4. Scope Fidelity Check \u2014 deep
+- [ ] F2. Code Quality Review \u2014 general
+- [ ] F3. Real Manual QA \u2014 general (+ playwright if UI)
+- [ ] F4. Scope Fidelity Check \u2014 general
 ## Commit Strategy
 ## Success Criteria
 \`\`\`

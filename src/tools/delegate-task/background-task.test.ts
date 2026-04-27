@@ -245,7 +245,7 @@ describeFn("executeBackgroundTask output/session metadata compatibility", () => 
 
     //#then
     expectFn(launchCalls).toHaveLength(1)
-    expectFn((launchCalls[0] as { agent: string }).agent).toBe("sisyphus-junior")
+    expectFn((launchCalls[0] as { agent: string }).agent).toBe("Sisyphus-Junior")
   })
 
   testFn("keeps launched background task alive when parent aborts before session id resolves", async () => {
@@ -324,7 +324,7 @@ describeFn("executeBackgroundTask output/session metadata compatibility", () => 
         prompt: "check",
         run_in_background: true,
         load_skills: [],
-        category: "quick",
+        category: "writing",
       },
       {
         sessionID: "ses_parent",

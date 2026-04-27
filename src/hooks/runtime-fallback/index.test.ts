@@ -472,7 +472,7 @@ describe("runtime-fallback", () => {
       )
       expect(bootstrapLog?.data).toMatchObject({
         sessionID,
-        category: "quick",
+        category: "writing",
         model: "anthropic/claude-haiku-4-5",
       })
     })
@@ -1130,7 +1130,7 @@ describe("runtime-fallback", () => {
       )
       expect(bootstrapLog?.data).toMatchObject({
         sessionID,
-        category: "quick",
+        category: "writing",
         model: "anthropic/claude-haiku-4-5",
       })
     })
