@@ -1,6 +1,7 @@
 import type { OhMyOpenCodeConfig } from "../config";
 import { getAgentDisplayName } from "../shared/agent-display-names";
 import { isTaskSystemEnabled } from "../shared";
+import type { AgentOverrideConfig } from "../config/schema/agent-overrides";
 
 type AgentWithPermission = { permission?: Record<string, unknown> };
 
@@ -123,10 +124,32 @@ export function applyToolConfig(params: {
     };
   }
 
+  applyDisallowedTools(params.pluginConfig, params.agentResult)
+
   params.config.permission = {
     webfetch: "allow",
     external_directory: "allow",
     ...(params.config.permission as Record<string, unknown>),
     task: "deny",
   };
+}
+
+function applyDisallowedTools(
+  pluginConfig: OhMyOpenCodeConfig,
+  agentResult: Record<string, unknown>,
+): void {
+  const agentOverrides = pluginConfig.agents
+  if (!agentOverrides) return
+
+  for (const [key, override] of Object.entries(agentOverrides)) {
+    const typed = override as AgentOverrideConfig | undefined
+    const disallowed = typed?.disallowedTools
+    if (!disallowed?.length) continue
+
+    const agent = agentByKey(agentResult, key)
+    if (!agent) continue
+
+    const denials = Object.fromEntries(disallowed.map(t => [t, "deny"]))
+    agent.permission = { ...agent.permission, ...denials }
+  }
 }

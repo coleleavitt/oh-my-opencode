@@ -47,6 +47,8 @@ export const AgentOverrideConfigSchema = z.object({
       variant: z.string().optional(),
     })
     .optional(),
+  /** Tool names this agent should NOT have access to. Applied as permission denials. */
+  disallowedTools: z.array(z.string()).optional(),
   compaction: z
     .object({
       model: z.string().optional(),

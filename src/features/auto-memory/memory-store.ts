@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { log } from "../../shared/logger"
 
 export async function saveMemoryEntry(params: {
   baseDir: string
@@ -13,6 +14,7 @@ export async function saveMemoryEntry(params: {
   const filename = `${agentType}-${Date.now()}-${suffix}.md`
   const fullPath = join(baseDir, filename)
   await writeFile(fullPath, content, "utf8")
+  log(`[auto-memory] saved: ${filename} — ${content.substring(0, 120)}`)
   return fullPath
 }
 

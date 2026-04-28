@@ -87,6 +87,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
   file_changed: FileChangedConfigSchema.optional(),
   cwd_changed: CwdChangedConfigSchema.optional(),
   teammates: TeammatesConfigSchema.optional(),
+  /** Kill switch for all atlas continuation and background agent activity */
+  disable_agents_fleet: z.boolean().optional(),
   /** Migration history to prevent re-applying migrations (e.g., model version upgrades) */
   _migrations: z.array(z.string()).optional(),
 })

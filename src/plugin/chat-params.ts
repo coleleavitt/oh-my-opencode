@@ -98,6 +98,7 @@ export function createChatParamsHandler(args: {
   client?: unknown;
 }): (input: unknown, output: unknown) => Promise<void> {
   return async (input, output): Promise<void> => {
+    const rawInput = input as Record<string, unknown> | undefined;
     const normalizedInput = buildChatParamsInput(input);
     if (!normalizedInput) return;
     if (!isChatParamsOutput(output)) return;
@@ -230,5 +231,10 @@ export function createChatParamsHandler(args: {
     }
 
     await args.anthropicEffort?.["chat.params"]?.(normalizedInput, output);
+
+    const resolvedEffort = (output.options.effort ?? output.options.reasoningEffort) as string | undefined
+    if (resolvedEffort && rawInput && typeof rawInput.system === "string" && rawInput.system.includes("${CLAUDE_EFFORT}")) {
+      rawInput.system = rawInput.system.replaceAll("${CLAUDE_EFFORT}", resolvedEffort)
+    }
   };
 }

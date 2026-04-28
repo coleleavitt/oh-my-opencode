@@ -147,6 +147,7 @@ export type AgentName = BuiltinAgentName;
 export type AgentOverrideConfig = Partial<AgentConfig> & {
   prompt_append?: string;
   variant?: string;
+  disallowedTools?: string[];
   fallback_models?:
     | string
     | (

@@ -9,8 +9,8 @@ export interface AtlasHookOptions {
   backgroundManager?: BackgroundManager
   isContinuationStopped?: (sessionID: string) => boolean
   agentOverrides?: AgentOverrides
-  /** Enable auto-commit after each atomic task completion (default: true) */
   autoCommit?: boolean
+  disableAgentsFleet?: boolean
 }
 
 export interface ToolExecuteAfterInput {

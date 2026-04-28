@@ -14,6 +14,11 @@ export function createAtlasEventHandler(input: {
   const { ctx, options, sessions, getState } = input
 
   return async ({ event }): Promise<void> => {
+    if (process.env.OMO_DISABLE_AGENTS_FLEET === "1" || process.env.OMO_DISABLE_AGENTS_FLEET === "true") {
+      return
+    }
+    if (options?.disableAgentsFleet) return
+
     const props = event.properties as Record<string, unknown> | undefined
 
     if (event.type === "session.error") {

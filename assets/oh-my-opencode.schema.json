@@ -428,6 +428,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -777,6 +783,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -1128,6 +1140,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -1477,6 +1495,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -1831,6 +1855,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -2180,6 +2210,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -2531,6 +2567,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -2880,6 +2922,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -3231,6 +3279,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -3580,6 +3634,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -3931,6 +3991,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -4280,6 +4346,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -4631,6 +4703,12 @@
               },
               "additionalProperties": false
             },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "compaction": {
               "type": "object",
               "properties": {
@@ -4980,6 +5058,12 @@
                 }
               },
               "additionalProperties": false
+            },
+            "disallowedTools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "compaction": {
               "type": "object",
@@ -6371,6 +6455,9 @@
         "max_concurrent"
       ],
       "additionalProperties": false
+    },
+    "disable_agents_fleet": {
+      "type": "boolean"
     },
     "_migrations": {
       "type": "array",
