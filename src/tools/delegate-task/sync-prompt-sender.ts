@@ -8,10 +8,10 @@ import {
 } from "../../shared/model-suggestion-retry"
 import { formatDetailedError } from "./error-formatting"
 import { getAgentToolRestrictions } from "../../shared/agent-tool-restrictions"
+import { stripInvisibleAgentCharacters } from "../../shared/agent-display-names"
 import { applySessionPromptParams } from "../../shared/session-prompt-params-helpers"
 import { setSessionTools } from "../../shared/session-tools-store"
 import { createInternalAgentTextPart } from "../../shared/internal-initiator-marker"
-import { normalizeAgentForPrompt } from "../../shared/agent-display-names"
 
 type SendSyncPromptDeps = {
   promptWithModelSuggestionRetry: typeof promptWithModelSuggestionRetry
@@ -42,7 +42,7 @@ function buildPromptGenerationParams(model: DelegatedModelConfig | undefined): R
 }
 
 function isOracleAgent(agentToUse: string): boolean {
-  return agentToUse.toLowerCase() === "oracle"
+  return stripInvisibleAgentCharacters(agentToUse).toLowerCase() === "oracle"
 }
 
 function isUnexpectedEofError(error: unknown): boolean {
@@ -78,19 +78,10 @@ export async function sendSyncPrompt(
 
   applySessionPromptParams(input.sessionID, input.categoryModel)
 
-  // Normalize to the canonical display name OpenCode's agent registry uses
-  // after agent-key-remapper runs (see src/plugin-handlers/agent-key-remapper.ts:12).
-  // The 6 ceremonial agents (sisyphus, hephaestus, prometheus, atlas, metis, momus)
-  // are registered as display names ("Sisyphus - Ultraworker", ...). Sending a
-  // lowercase config key like "momus" yields "Agent not found: momus" because the
-  // registry only has "Momus - Plan Critic". opencode now does case-insensitive
-  // fallback (see Agent.get), but display name remains the canonical wire form.
-  const normalizedAgent = normalizeAgentForPrompt(input.agentToUse) ?? input.agentToUse
-
   const promptArgs = {
     path: { id: input.sessionID },
     body: {
-      agent: normalizedAgent,
+      agent: stripInvisibleAgentCharacters(input.agentToUse),
       system: input.systemContent,
       tools,
       parts: [createInternalAgentTextPart(effectivePrompt)],

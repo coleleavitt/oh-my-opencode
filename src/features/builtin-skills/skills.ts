@@ -1,5 +1,5 @@
-import type { BuiltinSkill } from "./types";
-import type { BrowserAutomationProvider } from "../../config/schema";
+import type { BuiltinSkill } from "./types"
+import type { BrowserAutomationProvider } from "../../config/schema"
 
 import {
   playwrightSkill,
@@ -10,51 +10,32 @@ import {
   devBrowserSkill,
   reviewWorkSkill,
   aiSlopRemoverSkill,
-  argusReviewSkill,
-  argusPrSkill,
-  argusCommitSkill,
-  argusSecuritySkill,
-  argusCustomSkill,
-  argusPlanSkill,
-} from "./skills/index";
+} from "./skills/index"
 
 export interface CreateBuiltinSkillsOptions {
-  browserProvider?: BrowserAutomationProvider;
-  disabledSkills?: Set<string>;
+  browserProvider?: BrowserAutomationProvider
+  disabledSkills?: Set<string>
 }
 
-export function createBuiltinSkills(
-  options: CreateBuiltinSkillsOptions = {},
-): BuiltinSkill[] {
-  const { browserProvider = "playwright", disabledSkills } = options;
+export function createBuiltinSkills(options: CreateBuiltinSkillsOptions = {}): BuiltinSkill[] {
+  const { browserProvider = "playwright", disabledSkills } = options
 
-  let browserSkill: BuiltinSkill;
-  if (browserProvider === "agent-browser") {
-    browserSkill = agentBrowserSkill;
-  } else if (browserProvider === "playwright-cli") {
-    browserSkill = playwrightCliSkill;
-  } else {
-    browserSkill = playwrightSkill;
-  }
+  let browserSkill: BuiltinSkill
+	if (browserProvider === "agent-browser") {
+		browserSkill = agentBrowserSkill
+	} else if (browserProvider === "dev-browser") {
+		browserSkill = devBrowserSkill
+	} else if (browserProvider === "playwright-cli") {
+		browserSkill = playwrightCliSkill
+	} else {
+		browserSkill = playwrightSkill
+	}
 
-  const skills = [
-    browserSkill,
-    frontendUiUxSkill,
-    gitMasterSkill,
-    devBrowserSkill,
-    reviewWorkSkill,
-    aiSlopRemoverSkill,
-    argusReviewSkill,
-    argusPrSkill,
-    argusCommitSkill,
-    argusSecuritySkill,
-    argusCustomSkill,
-    argusPlanSkill,
-  ];
+	const skills = [browserSkill, frontendUiUxSkill, gitMasterSkill, reviewWorkSkill, aiSlopRemoverSkill]
 
   if (!disabledSkills) {
-    return skills;
+    return skills
   }
 
-  return skills.filter((skill) => !disabledSkills.has(skill.name));
+  return skills.filter((skill) => !disabledSkills.has(skill.name))
 }

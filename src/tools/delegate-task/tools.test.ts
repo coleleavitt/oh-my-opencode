@@ -1,7 +1,7 @@
-declare const require: (name: string) => any
+declare const require: NodeJS.Require
 const { describe, test, expect, beforeEach, afterEach, spyOn, mock } = require("bun:test")
 import { DEFAULT_CATEGORIES, CATEGORY_PROMPT_APPENDS, CATEGORY_DESCRIPTIONS, isPlanAgent, PLAN_AGENT_NAMES, isPlanFamily, PLAN_FAMILY_NAMES } from "./constants"
-import { resolveCategoryConfig } from "./tools"
+import { getAgentDisplayName, getAgentListDisplayName } from "../../shared/agent-display-names"
 import type { CategoryConfig } from "../../config/schema"
 import type { DelegateTaskArgs } from "./types"
 import { __resetModelCache } from "../../shared/model-availability"
@@ -10,18 +10,32 @@ import { __setTimingConfig, __resetTimingConfig } from "./timing"
 import * as connectedProvidersCache from "../../shared/connected-providers-cache"
 import * as executor from "./executor"
 
+const runtimeRequire = require as NodeJS.Require & { cache?: Record<string, unknown> }
+
+function clearRequireCache(modulePath: string): void {
+  const resolvedPath = runtimeRequire.resolve(modulePath)
+  if (runtimeRequire.cache?.[resolvedPath]) {
+    delete runtimeRequire.cache[resolvedPath]
+  }
+}
+
+function resolveCategoryConfig(...args: Parameters<typeof import("./tools").resolveCategoryConfig>): ReturnType<typeof import("./tools").resolveCategoryConfig> {
+  clearRequireCache("./tools")
+  return require("./tools").resolveCategoryConfig(...args)
+}
+
 const SYSTEM_DEFAULT_MODEL = "anthropic/claude-sonnet-4-6"
 
-const TEST_CONNECTED_PROVIDERS = ["anthropic", "google", "openai", "kimi-for-coding"]
+const TEST_CONNECTED_PROVIDERS = ["anthropic", "google", "openai"]
 const TEST_AVAILABLE_MODELS = new Set([
-  "anthropic/claude-opus-4-6",
+  "anthropic/claude-opus-4-7",
   "anthropic/claude-sonnet-4-6",
   "anthropic/claude-haiku-4-5",
   "google/gemini-3.1-pro",
   "google/gemini-3-flash",
-  "openai/gpt-5.4",
+  "openai/gpt-5.4-mini",
+  "openai/gpt-5.5",
   "openai/gpt-5.3-codex",
-  "kimi-for-coding/k2p5",
 ])
 
 type DelegateTaskArgsWithSerializedSkills = Omit<DelegateTaskArgs, "load_skills"> & {
@@ -38,6 +52,7 @@ describe("sisyphus-task", () => {
 
   beforeEach(() => {
     mock.restore()
+    clearRequireCache("./tools")
     __resetModelCache()
     clearSkillCache()
     __setTimingConfig({
@@ -49,15 +64,14 @@ describe("sisyphus-task", () => {
       MAX_POLL_TIME_MS: 2000,
       SESSION_CONTINUATION_STABILITY_MS: 50,
     })
-    cacheSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["anthropic", "google", "openai", "kimi-for-coding"])
+    cacheSpy = spyOn(connectedProvidersCache, "readConnectedProvidersCache").mockReturnValue(["anthropic", "google", "openai"])
     providerModelsSpy = spyOn(connectedProvidersCache, "readProviderModelsCache").mockReturnValue({
       models: {
-        anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"],
+        anthropic: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"],
         google: ["gemini-3.1-pro", "gemini-3-flash"],
-        openai: ["gpt-5.4", "gpt-5.3-codex"],
-        "kimi-for-coding": ["k2p5"],
+        openai: ["gpt-5.5", "gpt-5.4-mini", "gpt-5.3-codex"],
       },
-      connected: ["anthropic", "google", "openai", "kimi-for-coding"],
+      connected: ["anthropic", "google", "openai"],
       updatedAt: "2026-01-01T00:00:00.000Z",
     })
   })
@@ -79,6 +93,35 @@ describe("sisyphus-task", () => {
       expect(category.variant).toBe("high")
     })
 
+    test("ultrabrain category has model and variant config", () => {
+      // given
+      const category = DEFAULT_CATEGORIES["ultrabrain"]
+
+      // when / #then
+      expect(category).toBeDefined()
+      expect(category.model).toBe("openai/gpt-5.5")
+      expect(category.variant).toBe("xhigh")
+    })
+
+    test("deep category has model and variant config", () => {
+      // given
+      const category = DEFAULT_CATEGORIES["deep"]
+
+      // when / #then
+      expect(category).toBeDefined()
+      expect(category.model).toBe("openai/gpt-5.5")
+      expect(category.variant).toBe("medium")
+    })
+
+    test("unspecified-high category uses claude-opus-4-7 max as primary", () => {
+      // given
+      const category = DEFAULT_CATEGORIES["unspecified-high"]
+
+      // when / #then
+      expect(category).toBeDefined()
+      expect(category.model).toBe("anthropic/claude-opus-4-7")
+      expect(category.variant).toBe("max")
+    })
   })
 
   describe("CATEGORY_PROMPT_APPENDS", () => {
@@ -91,6 +134,23 @@ describe("sisyphus-task", () => {
       expect(promptAppend).toContain("Design-first")
     })
 
+    test("ultrabrain category has deep logical reasoning prompt", () => {
+      // given
+      const promptAppend = CATEGORY_PROMPT_APPENDS["ultrabrain"]
+
+      // when / #then
+      expect(promptAppend).toContain("DEEP LOGICAL REASONING")
+      expect(promptAppend).toContain("Strategic advisor")
+    })
+
+    test("deep category has goal-oriented autonomous prompt", () => {
+      // given
+      const promptAppend = CATEGORY_PROMPT_APPENDS["deep"]
+
+      // when / #then
+      expect(promptAppend).toContain("GOAL-ORIENTED")
+      expect(promptAppend).toContain("autonomous")
+    })
   })
 
   describe("CATEGORY_DESCRIPTIONS", () => {
@@ -105,6 +165,14 @@ describe("sisyphus-task", () => {
       }
     })
 
+    test("unspecified-high category exists and has description", () => {
+      // given / #when
+      const description = CATEGORY_DESCRIPTIONS["unspecified-high"]
+
+      // then
+      expect(description).toBeDefined()
+      expect(description).toContain("high effort")
+    })
   })
 
   describe("isPlanAgent", () => {
@@ -201,9 +269,44 @@ describe("sisyphus-task", () => {
       expect(result).toBe(true)
     })
 
+    test("returns true for prometheus display name", () => {
+      //#given / #when
+      const result = isPlanFamily(getAgentDisplayName("prometheus"))
+      //#then
+      expect(result).toBe(true)
+    })
+
+    test("returns true for prometheus list display name with zwsp prefix", () => {
+      //#given / #when
+      const result = isPlanFamily(getAgentListDisplayName("prometheus"))
+      //#then
+      expect(result).toBe(true)
+    })
+
     test("returns false for 'oracle'", () => {
       //#given / #when
       const result = isPlanFamily("oracle")
+      //#then
+      expect(result).toBe(false)
+    })
+
+    test("returns false for 'Momus (Plan Critic)' - no substring false-positive", () => {
+      //#given / #when
+      const result = isPlanFamily("Momus (Plan Critic)")
+      //#then
+      expect(result).toBe(false)
+    })
+
+    test("returns false for 'Momus - Plan Critic' - no substring false-positive", () => {
+      //#given / #when
+      const result = isPlanFamily("Momus - Plan Critic")
+      //#then
+      expect(result).toBe(false)
+    })
+
+    test("returns false for 'Metis - Plan Consultant' - no substring false-positive", () => {
+      //#given / #when
+      const result = isPlanFamily("Metis - Plan Consultant")
       //#then
       expect(result).toBe(false)
     })
@@ -272,13 +375,13 @@ describe("sisyphus-task", () => {
       const args: DelegateTaskArgsWithSerializedSkills = {
         description: "Parse valid string",
         prompt: "Load skill parsing test",
-        category: "writing",
+        category: "quick",
         run_in_background: true,
         load_skills: '["playwright", "git-master"]',
       }
 
       //#when
-      await tool.execute(args as unknown as DelegateTaskArgs, toolContext)
+      await tool.execute(args as DelegateTaskArgs, toolContext)
 
       //#then
       expect(args.load_skills).toEqual(["playwright", "git-master"])
@@ -335,13 +438,13 @@ describe("sisyphus-task", () => {
       const args: DelegateTaskArgsWithSerializedSkills = {
         description: "Parse malformed string",
         prompt: "Load skill parsing test",
-        category: "writing",
+        category: "quick",
         run_in_background: true,
         load_skills: '["playwright", "git-master"',
       }
 
       //#when
-      await tool.execute(args as unknown as DelegateTaskArgs, toolContext)
+      await tool.execute(args as DelegateTaskArgs, toolContext)
 
       //#then
       expect(args.load_skills).toEqual([])
@@ -401,7 +504,7 @@ describe("sisyphus-task", () => {
        } = {
          description: "Quick category test",
          prompt: "Do something",
-         category: "writing",
+         category: "quick",
          run_in_background: true,
          load_skills: [],
        }
@@ -410,10 +513,10 @@ describe("sisyphus-task", () => {
        await tool.execute(args, toolContext)
 
        // then
-       expect(args.subagent_type).toBe("sisyphus-junior")
+       expect(args.subagent_type).toBe("Sisyphus-Junior")
     }, { timeout: 10000 })
 
-    test("respects both category and subagent_type when both are provided (Phase C1)", async () => {
+    test("prefers category over subagent_type when both are provided", async () => {
       //#given
       const { createDelegateTask } = require("./tools")
 
@@ -458,7 +561,7 @@ describe("sisyphus-task", () => {
       const args = {
         description: "Override test",
         prompt: "Do something",
-        category: "writing",
+        category: "quick",
         subagent_type: "oracle",
         run_in_background: true,
         load_skills: [],
@@ -467,10 +570,8 @@ describe("sisyphus-task", () => {
       //#when
       await tool.execute(args, toolContext)
 
-      //#then - Phase C1: both respected. Category sets the model tier, subagent_type
-      // stays orthogonal. The LLM-supplied "oracle" passes through; only category-only
-      // calls (where subagent_type is omitted) get the sisyphus-junior fallback.
-      expect(args.subagent_type).toBe("oracle")
+      //#then - category takes precedence, subagent_type is overridden to sisyphus-junior
+      expect(args.subagent_type).toBe("Sisyphus-Junior")
     }, { timeout: 10000 })
 
     test("proceeds without error when systemDefaultModel is undefined", async () => {
@@ -511,7 +612,7 @@ describe("sisyphus-task", () => {
          {
            description: "Test task",
            prompt: "Do something",
-           category: "visual-engineering",
+           category: "ultrabrain",
            run_in_background: true,
            load_skills: [],
          },
@@ -657,7 +758,7 @@ describe("sisyphus-task", () => {
     test("blocks requiresModel when availability is known and missing the required model", () => {
       // given - artistry has requiresModel: gemini-3.1-pro
       const categoryName = "artistry"
-      const availableModels = new Set<string>(["anthropic/claude-opus-4-6"])
+      const availableModels = new Set<string>(["anthropic/claude-opus-4-7"])
 
       // when
       const result = resolveCategoryConfig(categoryName, {
@@ -687,9 +788,9 @@ describe("sisyphus-task", () => {
     test("bypasses requiresModel when explicit user config provided", () => {
       // #given
       const categoryName = "deep"
-      const availableModels = new Set<string>(["anthropic/claude-opus-4-6"])
+      const availableModels = new Set<string>(["anthropic/claude-opus-4-7"])
       const userCategories = {
-        deep: { model: "anthropic/claude-opus-4-6" },
+        deep: { model: "anthropic/claude-opus-4-7" },
       }
 
       // #when
@@ -701,7 +802,7 @@ describe("sisyphus-task", () => {
 
       // #then
       expect(result).not.toBeNull()
-      expect(result!.config.model).toBe("anthropic/claude-opus-4-6")
+      expect(result!.config.model).toBe("anthropic/claude-opus-4-7")
     })
 
     test("bypasses requiresModel when explicit user config provided even with empty availability", () => {
@@ -709,7 +810,7 @@ describe("sisyphus-task", () => {
       const categoryName = "deep"
       const availableModels = new Set<string>()
       const userCategories = {
-        deep: { model: "anthropic/claude-opus-4-6" },
+        deep: { model: "anthropic/claude-opus-4-7" },
       }
 
       // #when
@@ -721,7 +822,7 @@ describe("sisyphus-task", () => {
 
       // #then
       expect(result).not.toBeNull()
-      expect(result!.config.model).toBe("anthropic/claude-opus-4-6")
+      expect(result!.config.model).toBe("anthropic/claude-opus-4-7")
     })
 
     test("returns default model from DEFAULT_CATEGORIES for builtin category", () => {
@@ -741,7 +842,7 @@ describe("sisyphus-task", () => {
       // given
       const categoryName = "visual-engineering"
       const userCategories = {
-        "visual-engineering": { model: "anthropic/claude-opus-4-6" },
+        "visual-engineering": { model: "anthropic/claude-opus-4-7" },
       }
 
       // when
@@ -749,7 +850,7 @@ describe("sisyphus-task", () => {
 
       // then
       expect(result).not.toBeNull()
-      expect(result!.config.model).toBe("anthropic/claude-opus-4-6")
+      expect(result!.config.model).toBe("anthropic/claude-opus-4-7")
     })
 
     test("user prompt_append is appended to default", () => {
@@ -776,7 +877,7 @@ describe("sisyphus-task", () => {
       const categoryName = "my-custom"
       const userCategories = {
         "my-custom": {
-          model: "openai/gpt-5.4",
+          model: "openai/gpt-5.5",
           temperature: 0.5,
           prompt_append: "You are a custom agent",
         },
@@ -787,7 +888,7 @@ describe("sisyphus-task", () => {
 
       // then
       expect(result).not.toBeNull()
-      expect(result!.config.model).toBe("openai/gpt-5.4")
+      expect(result!.config.model).toBe("openai/gpt-5.5")
       expect(result!.config.temperature).toBe(0.5)
       expect(result!.promptAppend).toBe("You are a custom agent")
     })
@@ -813,7 +914,7 @@ describe("sisyphus-task", () => {
     test("category built-in model takes precedence over inheritedModel", () => {
       // given - builtin category with its own model, parent model also provided
       const categoryName = "visual-engineering"
-      const inheritedModel = "cliproxy/claude-opus-4-6"
+      const inheritedModel = "cliproxy/claude-opus-4-7"
 
       // when
       const result = resolveCategoryConfig(categoryName, { inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -826,8 +927,8 @@ describe("sisyphus-task", () => {
     test("systemDefaultModel is used as fallback when custom category has no model", () => {
       // given - custom category with no model defined
       const categoryName = "my-custom-no-model"
-      const userCategories = { "my-custom-no-model": { temperature: 0.5 } } as unknown as Record<string, CategoryConfig>
-      const inheritedModel = "cliproxy/claude-opus-4-6"
+      const userCategories: Record<string, CategoryConfig> = { "my-custom-no-model": { temperature: 0.5 } }
+      const inheritedModel = "cliproxy/claude-opus-4-7"
 
       // when
       const result = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -843,7 +944,7 @@ describe("sisyphus-task", () => {
       const userCategories = {
         "visual-engineering": { model: "my-provider/my-model" },
       }
-      const inheritedModel = "cliproxy/claude-opus-4-6"
+      const inheritedModel = "cliproxy/claude-opus-4-7"
 
       // when
       const result = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -900,7 +1001,7 @@ describe("sisyphus-task", () => {
          manager: mockManager,
          client: mockClient,
          userCategories: {
-           "visual-engineering": { model: "openai/gpt-5.4", variant: "xhigh" },
+           ultrabrain: { model: "openai/gpt-5.5", variant: "xhigh" },
          },
          connectedProvidersOverride: TEST_CONNECTED_PROVIDERS,
          availableModelsOverride: createTestAvailableModels(),
@@ -918,7 +1019,7 @@ describe("sisyphus-task", () => {
         {
           description: "Variant task",
           prompt: "Do something",
-          category: "visual-engineering",
+          category: "ultrabrain",
           run_in_background: true,
           load_skills: ["git-master"],
         },
@@ -928,7 +1029,7 @@ describe("sisyphus-task", () => {
       // then
       expect(launchInput.model).toEqual({
         providerID: "openai",
-        modelID: "gpt-5.4",
+        modelID: "gpt-5.5",
         variant: "xhigh",
       })
     })
@@ -954,7 +1055,7 @@ describe("sisyphus-task", () => {
        const mockClient = {
          app: { agents: async () => ({ data: [] }) },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
-         model: { list: async () => [{ provider: "anthropic", id: "claude-opus-4-6" }] },
+         model: { list: async () => [{ provider: "anthropic", id: "claude-opus-4-7" }] },
          session: {
            create: async () => ({ data: { id: "test-session" } }),
            prompt: async () => ({ data: {} }),
@@ -978,27 +1079,27 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      // when - artistry uses gemini-3.1-pro high in DEFAULT_CATEGORIES
+      // when - unspecified-high uses claude-opus-4-7 max in DEFAULT_CATEGORIES
       await tool.execute(
         {
-          description: "Test artistry default variant",
+          description: "Test unspecified-high default variant",
           prompt: "Do something",
-          category: "artistry",
+          category: "unspecified-high",
           run_in_background: true,
           load_skills: ["git-master"],
         },
         toolContext
       )
 
-      // then - gemini-3.1-pro should be passed with high variant
+      // then - claude-opus-4-7 should be passed with max variant
       expect(launchInput.model).toEqual({
-        providerID: "google",
-        modelID: "gemini-3.1-pro",
-        variant: "high",
+        providerID: "anthropic",
+        modelID: "claude-opus-4-7",
+        variant: "max",
       })
     }, { timeout: 20000 })
 
-     test("DEFAULT_CATEGORIES explicit model passes to sync session.prompt WITHOUT userCategories", async () => {
+     test("DEFAULT_CATEGORIES explicit high model passes to sync session.prompt WITHOUT userCategories", async () => {
        // given - NO userCategories, testing DEFAULT_CATEGORIES for sync mode
        const { createDelegateTask } = require("./tools")
        let promptBody: any
@@ -1013,7 +1114,7 @@ describe("sisyphus-task", () => {
        const mockClient = {
          app: { agents: async () => ({ data: [] }) },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
-         model: { list: async () => [{ provider: "kimi-for-coding", id: "k2p5" }] },
+         model: { list: async () => [{ provider: "anthropic", id: "claude-opus-4-7" }] },
          session: {
            get: async () => ({ data: { directory: "/project" } }),
            create: async () => ({ data: { id: "ses_sync_default_variant" } }),
@@ -1039,24 +1140,24 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      // when - writing uses kimi-for-coding/k2p5 in DEFAULT_CATEGORIES (not unstable, runs sync)
+      // when - unspecified-high uses claude-opus-4-7 max in DEFAULT_CATEGORIES
       await tool.execute(
         {
-          description: "Test writing sync variant",
+          description: "Test unspecified-high sync variant",
           prompt: "Do something",
-          category: "writing",
+          category: "unspecified-high",
           run_in_background: false,
           load_skills: ["git-master"],
         },
         toolContext
       )
 
-      // then - kimi-for-coding/k2p5 should be passed (writing has no variant)
+      // then - claude-opus-4-7 should be passed with max variant
       expect(promptBody.model).toEqual({
-        providerID: "kimi-for-coding",
-        modelID: "k2p5",
+        providerID: "anthropic",
+        modelID: "claude-opus-4-7",
       })
-      expect(promptBody.variant).toBeUndefined()
+      expect(promptBody.variant).toBe("max")
     }, { timeout: 20000 })
   })
 
@@ -1095,7 +1196,7 @@ describe("sisyphus-task", () => {
         {
           description: "Test task",
           prompt: "Do something",
-          category: "visual-engineering",
+          category: "ultrabrain",
           run_in_background: false,
         },
         toolContext
@@ -1136,7 +1237,7 @@ describe("sisyphus-task", () => {
          {
            description: "Test task",
            prompt: "Do something",
-           category: "visual-engineering",
+           category: "ultrabrain",
            run_in_background: false,
            load_skills: null,
          },
@@ -1188,7 +1289,7 @@ describe("sisyphus-task", () => {
         {
           description: "Test task",
           prompt: "Do something",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: [],
         },
@@ -1223,7 +1324,7 @@ describe("sisyphus-task", () => {
         {
           description: "Category without run flag",
           prompt: "Do something",
-          category: "writing",
+          category: "quick",
           load_skills: [],
         },
         { sessionID: "parent-session", messageID: "parent-message", agent: "sisyphus", abort: new AbortController().signal }
@@ -1259,7 +1360,7 @@ describe("sisyphus-task", () => {
       )).rejects.toThrow("Invalid arguments: 'run_in_background' parameter is REQUIRED")
     })
 
-    test("#given session_id without run_in_background #when executing #then throws required parameter error", async () => {
+    test("#given task_id without run_in_background #when executing #then throws required parameter error", async () => {
       // given
       const { createDelegateTask } = require("./tools")
       const mockManager = { resume: async () => ({ id: "task-1", sessionID: "ses_1", status: "running" }) }
@@ -1281,14 +1382,14 @@ describe("sisyphus-task", () => {
         {
           description: "Continue without run flag",
           prompt: "Continue",
-          session_id: "ses_existing",
+          task_id: "ses_existing",
           load_skills: [],
         },
         { sessionID: "parent-session", messageID: "parent-message", agent: "sisyphus", abort: new AbortController().signal }
       )).rejects.toThrow("Invalid arguments: 'run_in_background' parameter is REQUIRED")
     })
 
-    test("#given no category no subagent_type no session_id and no run_in_background #when executing #then throws required parameter error", async () => {
+    test("#given no category no subagent_type no task_id and no run_in_background #when executing #then throws required parameter error", async () => {
       // given
       const { createDelegateTask } = require("./tools")
       const mockManager = { launch: async () => ({}) }
@@ -1338,7 +1439,7 @@ describe("sisyphus-task", () => {
         await tool.execute(
           {
             prompt: "Fix the broken unit tests in parser module",
-            category: "writing",
+            category: "quick",
             run_in_background: false,
             load_skills: [],
           },
@@ -1381,7 +1482,7 @@ describe("sisyphus-task", () => {
           {
             description: "   ",
             prompt: "Refactor authentication module completely",
-            category: "writing",
+            category: "quick",
             run_in_background: false,
             load_skills: [],
           },
@@ -1424,7 +1525,7 @@ describe("sisyphus-task", () => {
           {
             description: "My custom task name",
             prompt: "Do something else entirely",
-            category: "writing",
+            category: "quick",
             run_in_background: false,
             load_skills: [],
           },
@@ -1450,7 +1551,7 @@ describe("sisyphus-task", () => {
       let promptCalled = false
       const mockManager = { launch: async () => ({}) }
       const mockClient = {
-        app: { agents: async () => ({ data: [{ name: "oracle", mode: "subagent", model: { providerID: "anthropic", modelID: "claude-opus-4-6" } }] }) },
+        app: { agents: async () => ({ data: [{ name: "oracle", mode: "subagent", model: { providerID: "anthropic", modelID: "claude-opus-4-7" } }] }) },
         config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
         session: {
           get: async () => ({ data: { directory: "/project" } }),
@@ -1497,7 +1598,7 @@ describe("sisyphus-task", () => {
             id: "bg_explicit_true",
             sessionID: "ses_bg_explicit_true",
             description: "Explicit true",
-            agent: "sisyphus-junior",
+            agent: "Sisyphus-Junior",
             status: "running",
           }
         },
@@ -1520,7 +1621,7 @@ describe("sisyphus-task", () => {
         {
           description: "Explicit true",
           prompt: "Run background",
-          category: "writing",
+          category: "quick",
           run_in_background: true,
           load_skills: [],
         },
@@ -1550,14 +1651,14 @@ describe("sisyphus-task", () => {
                 id: "bg_tool_first",
                 sessionID: undefined,
                 description: "Tool first",
-                agent: "sisyphus-junior",
+                agent: "Sisyphus-Junior",
                 status: "running",
               }
             : {
                 id: "bg_tool_second",
                 sessionID: undefined,
                 description: "Tool second",
-                agent: "sisyphus-junior",
+                agent: "Sisyphus-Junior",
                 status: "running",
               }
         },
@@ -1592,7 +1693,7 @@ describe("sisyphus-task", () => {
           {
             description: "Tool first",
             prompt: "Run background",
-            category: "writing",
+            category: "quick",
             run_in_background: true,
             load_skills: [],
           },
@@ -1602,7 +1703,7 @@ describe("sisyphus-task", () => {
           {
             description: "Tool second",
             prompt: "Run background",
-            category: "writing",
+            category: "quick",
             run_in_background: true,
             load_skills: [],
           },
@@ -1619,8 +1720,8 @@ describe("sisyphus-task", () => {
     }, { timeout: 10000 })
   })
 
-  describe("session_id with background parameter", () => {
-  test("session_id with background=false should wait for result and return content", async () => {
+  describe("task_id with background parameter", () => {
+  test("task_id with background=false should wait for result and return content", async () => {
     // Note: This test needs extended timeout because the implementation has MIN_STABILITY_TIME_MS = 5000
     // given
     const { createDelegateTask } = require("./tools")
@@ -1708,7 +1809,7 @@ describe("sisyphus-task", () => {
        {
          description: "Continue test",
          prompt: "Continue the task",
-         session_id: "ses_continue_test",
+         task_id: "ses_continue_test",
          run_in_background: false,
          load_skills: ["git-master"],
        },
@@ -1735,7 +1836,7 @@ describe("sisyphus-task", () => {
           id: "msg_001",
           role: "user",
           agent: "sisyphus-junior",
-          model: { providerID: "anthropic", modelID: "claude-opus-4-6" },
+          model: { providerID: "anthropic", modelID: "claude-opus-4-7" },
           variant: "max",
           time: { created: baseTime },
         },
@@ -1805,7 +1906,7 @@ describe("sisyphus-task", () => {
       {
         description: "Continue with variant",
         prompt: "Continue the task",
-        session_id: "ses_var_test",
+        task_id: "ses_var_test",
         run_in_background: false,
         load_skills: [],
       },
@@ -1816,11 +1917,11 @@ describe("sisyphus-task", () => {
     expect(promptMock).toHaveBeenCalled()
     const callArgs = promptMock.mock.calls[0][0]
     expect(callArgs.body.variant).toBe("max")
-    expect(callArgs.body.agent).toBe("Sisyphus-Junior")
-    expect(callArgs.body.model).toEqual({ providerID: "anthropic", modelID: "claude-opus-4-6" })
+    expect(callArgs.body.agent).toBe("sisyphus-junior")
+    expect(callArgs.body.model).toEqual({ providerID: "anthropic", modelID: "claude-opus-4-7" })
   }, { timeout: 10000 })
 
-  test("session_id with background=true should return immediately without waiting", async () => {
+  test("task_id with background=true should return immediately without waiting", async () => {
     // given
     const { createDelegateTask } = require("./tools")
     
@@ -1864,7 +1965,7 @@ describe("sisyphus-task", () => {
        {
          description: "Continue bg test",
          prompt: "Continue in background",
-         session_id: "ses_bg_continue",
+         task_id: "ses_bg_continue",
          run_in_background: true,
          load_skills: ["git-master"],
        },
@@ -1901,7 +2002,7 @@ describe("sisyphus-task", () => {
          },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
          app: {
-           agents: async () => ({ data: [{ name: "writing", mode: "subagent" }] }),
+           agents: async () => ({ data: [{ name: "ultrabrain", mode: "subagent" }] }),
          },
        }
        
@@ -1922,7 +2023,7 @@ describe("sisyphus-task", () => {
         {
           description: "Sync error test",
           prompt: "Do something",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["git-master"],
         },
@@ -1966,7 +2067,7 @@ describe("sisyphus-task", () => {
          },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
          app: {
-           agents: async () => ({ data: [{ name: "writing", mode: "subagent" }] }),
+           agents: async () => ({ data: [{ name: "ultrabrain", mode: "subagent" }] }),
          },
        }
        
@@ -1987,7 +2088,7 @@ describe("sisyphus-task", () => {
         {
           description: "Sync success test",
           prompt: "Do something",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["git-master"],
         },
@@ -2022,7 +2123,7 @@ describe("sisyphus-task", () => {
          },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
          app: {
-           agents: async () => ({ data: [{ name: "writing", mode: "subagent" }] }),
+           agents: async () => ({ data: [{ name: "ultrabrain", mode: "subagent" }] }),
          },
        }
        
@@ -2043,7 +2144,7 @@ describe("sisyphus-task", () => {
         {
           description: "Agent not found test",
           prompt: "Do something",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["git-master"],
         },
@@ -2347,7 +2448,7 @@ describe("sisyphus-task", () => {
          },
        }
        
-       // writing uses kimi-for-coding/k2p5 (non-gemini)
+       // Use ultrabrain which uses gpt-5.5 (non-gemini)
        const tool = createDelegateTask({
          manager: mockManager,
          client: mockClient,
@@ -2360,12 +2461,12 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
       
-      // when - using writing (kimi model) with run_in_background=false
+      // when - using ultrabrain (gpt model) with run_in_background=false
       const result = await tool.execute(
         {
           description: "Test non-gemini sync",
           prompt: "Do something smart",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["git-master"],
         },
@@ -2451,9 +2552,9 @@ describe("sisyphus-task", () => {
       // Override provider cache to include kimi-for-coding provider
       providerModelsSpy.mockReturnValue({
         models: {
-          anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"],
+          anthropic: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"],
           google: ["gemini-3.1-pro", "gemini-3-flash"],
-          openai: ["gpt-5.4", "gpt-5.3-codex"],
+        openai: ["gpt-5.5", "gpt-5.5", "gpt-5.3-codex"],
           "kimi-for-coding": ["k2p5"],
         },
         connected: ["anthropic", "google", "openai", "kimi-for-coding"],
@@ -2564,7 +2665,7 @@ describe("sisyphus-task", () => {
         client: mockClient,
         userCategories: {
           "my-unstable-cat": {
-            model: "openai/gpt-5.4",
+            model: "openai/gpt-5.5",
             is_unstable_agent: true,
           },
         },
@@ -2646,22 +2747,22 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      // when - using "quick" category which should use "anthropic/claude-haiku-4-5"
+      // when - using "quick" category which should use the catalog model
       await tool.execute(
         {
           description: "Test category fallback",
           prompt: "Do something quick",
-          category: "writing",
+          category: "quick",
           run_in_background: true,
           load_skills: [],
         },
         toolContext
       )
 
-      // then - model should be kimi-for-coding/k2p5 from DEFAULT_CATEGORIES
+      // then - model should be openai/gpt-5.4-mini from DEFAULT_CATEGORIES
       //         NOT anthropic/claude-sonnet-4-6 (system default)
-      expect(launchInput.model.providerID).toBe("kimi-for-coding")
-      expect(launchInput.model.modelID).toBe("k2p5")
+      expect(launchInput.model.providerID).toBe("openai")
+      expect(launchInput.model.modelID).toBe("gpt-5.4-mini")
     })
 
     test("category delegation ignores UI-selected (Kimi) system default model", async () => {
@@ -2698,7 +2799,7 @@ describe("sisyphus-task", () => {
          manager: mockManager,
          client: mockClient,
          userCategories: {
-           "fallback-test": { model: "anthropic/claude-opus-4-6" },
+           "fallback-test": { model: "anthropic/claude-opus-4-7" },
          },
          connectedProvidersOverride: TEST_CONNECTED_PROVIDERS,
          availableModelsOverride: createTestAvailableModels(),
@@ -2711,21 +2812,21 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      // when - using "quick" category which should use "anthropic/claude-haiku-4-5"
+      // when - using "quick" category which should use the catalog model
       await tool.execute(
         {
           description: "UI model inheritance test",
           prompt: "Do something quick",
-          category: "writing",
+          category: "quick",
           run_in_background: true,
           load_skills: [],
         },
         toolContext
       )
 
-      // then - category model must win (not Kimi system default)
-      expect(launchInput.model.providerID).toBe("kimi-for-coding")
-      expect(launchInput.model.modelID).toBe("k2p5")
+      // then - category model must win (not Kimi)
+      expect(launchInput.model.providerID).toBe("openai")
+      expect(launchInput.model.modelID).toBe("gpt-5.4-mini")
     })
 
     test("sisyphus-junior model override takes precedence over category model", async () => {
@@ -2772,12 +2873,12 @@ describe("sisyphus-task", () => {
         abort: new AbortController().signal,
       }
 
-      // when - using ultrabrain category (default model is openai/gpt-5.4)
+      // when - using ultrabrain category (default model is openai/gpt-5.5)
       await tool.execute(
         {
           description: "Override precedence test",
           prompt: "Do something",
-          category: "visual-engineering",
+          category: "ultrabrain",
           run_in_background: true,
           load_skills: [],
         },
@@ -2824,7 +2925,7 @@ describe("sisyphus-task", () => {
          client: mockClient,
          sisyphusJuniorModel: "anthropic/claude-sonnet-4-6",
          userCategories: {
-           "visual-engineering": { model: "openai/gpt-5.4" },
+           ultrabrain: { model: "openai/gpt-5.5" },
          },
          connectedProvidersOverride: TEST_CONNECTED_PROVIDERS,
          availableModelsOverride: createTestAvailableModels(),
@@ -2842,7 +2943,7 @@ describe("sisyphus-task", () => {
         {
           description: "Category precedence test",
           prompt: "Do something",
-          category: "visual-engineering",
+          category: "ultrabrain",
           run_in_background: true,
           load_skills: [],
         },
@@ -2851,7 +2952,7 @@ describe("sisyphus-task", () => {
 
       // then - explicit category model should win
       expect(launchInput.model.providerID).toBe("openai")
-      expect(launchInput.model.modelID).toBe("gpt-5.4")
+      expect(launchInput.model.modelID).toBe("gpt-5.5")
     })
 
     test("sisyphus-junior model override works with quick category (#1295)", async () => {
@@ -2903,7 +3004,7 @@ describe("sisyphus-task", () => {
         {
           description: "Issue 1295 quick category test",
           prompt: "Quick task",
-          category: "writing",
+          category: "quick",
           run_in_background: true,
           load_skills: [],
         },
@@ -2948,7 +3049,7 @@ describe("sisyphus-task", () => {
       const tool = createDelegateTask({
         manager: mockManager,
         client: mockClient,
-        sisyphusJuniorModel: "openai/gpt-5.4",
+        sisyphusJuniorModel: "openai/gpt-5.5",
         userCategories: {
           "my-custom": { temperature: 0.5 },
         },
@@ -2975,7 +3076,7 @@ describe("sisyphus-task", () => {
 
       // then - sisyphus-junior override model should be used as fallback
       expect(launchInput.model.providerID).toBe("openai")
-      expect(launchInput.model.modelID).toBe("gpt-5.4")
+      expect(launchInput.model.modelID).toBe("gpt-5.5")
     })
   })
 
@@ -3026,7 +3127,7 @@ describe("sisyphus-task", () => {
         {
           description: "Test browserProvider propagation",
           prompt: "Do something",
-          category: "writing",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["agent-browser"],
         },
@@ -3081,7 +3182,7 @@ describe("sisyphus-task", () => {
         {
           description: "Test missing browserProvider",
           prompt: "Do something",
-          category: "visual-engineering",
+          category: "ultrabrain",
           run_in_background: false,
           load_skills: ["agent-browser"],
         },
@@ -3338,49 +3439,49 @@ describe("sisyphus-task", () => {
 
   describe("modelInfo detection via resolveCategoryConfig", () => {
     test("catalog model is used for category with catalog entry", () => {
-      // given - visual-engineering has catalog entry
-      const categoryName = "visual-engineering"
+      // given - ultrabrain has catalog entry
+      const categoryName = "ultrabrain"
       
       // when
       const resolved = resolveCategoryConfig(categoryName, { systemDefaultModel: SYSTEM_DEFAULT_MODEL })
       
       // then - catalog model is used
       expect(resolved).not.toBeNull()
-      expect(resolved!.config.model).toBe("google/gemini-3.1-pro")
-      expect(resolved!.config.variant).toBe("high")
+      expect(resolved!.config.model).toBe("openai/gpt-5.5")
+      expect(resolved!.config.variant).toBe("xhigh")
     })
 
     test("default model is used for category with default entry", () => {
-      // given - writing has default model kimi-for-coding/k2p5
-      const categoryName = "writing"
+      // given - unspecified-low has default model
+      const categoryName = "unspecified-low"
       
       // when
       const resolved = resolveCategoryConfig(categoryName, { systemDefaultModel: SYSTEM_DEFAULT_MODEL })
       
       // then - default model from DEFAULT_CATEGORIES is used
       expect(resolved).not.toBeNull()
-      expect(resolved!.config.model).toBe("kimi-for-coding/k2p5")
+      expect(resolved!.config.model).toBe("anthropic/claude-sonnet-4-6")
     })
 
     test("category built-in model takes precedence over inheritedModel for builtin category", () => {
-      // given - builtin visual-engineering category with its own model, inherited model also provided
-      const categoryName = "visual-engineering"
-      const inheritedModel = "cliproxy/claude-opus-4-6"
+      // given - builtin ultrabrain category with its own model, inherited model also provided
+      const categoryName = "ultrabrain"
+      const inheritedModel = "cliproxy/claude-opus-4-7"
       
       // when
       const resolved = resolveCategoryConfig(categoryName, { inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
       
-      // then - category's built-in model wins (visual-engineering uses gemini-3.1-pro)
+      // then - category's built-in model wins (ultrabrain uses gpt-5.5)
       expect(resolved).not.toBeNull()
       const actualModel = resolved!.config.model
-      expect(actualModel).toBe("google/gemini-3.1-pro")
+      expect(actualModel).toBe("openai/gpt-5.5")
     })
 
     test("when user defines model - modelInfo should report user-defined regardless of inheritedModel", () => {
       // given
-      const categoryName = "visual-engineering"
-      const userCategories = { "visual-engineering": { model: "my-provider/custom-model" } }
-      const inheritedModel = "cliproxy/claude-opus-4-6"
+      const categoryName = "ultrabrain"
+      const userCategories = { "ultrabrain": { model: "my-provider/custom-model" } }
+      const inheritedModel = "cliproxy/claude-opus-4-7"
       
       // when
       const resolved = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -3396,9 +3497,9 @@ describe("sisyphus-task", () => {
     test("detection logic: actualModel comparison correctly identifies source", () => {
       // given - This test verifies the fix for PR #770 bug
       // The bug was: checking `if (inheritedModel)` instead of `if (actualModel === inheritedModel)`
-      const categoryName = "visual-engineering"
-      const inheritedModel = "cliproxy/claude-opus-4-6"
-      const userCategories = { "visual-engineering": { model: "user/model" } }
+      const categoryName = "ultrabrain"
+      const inheritedModel = "cliproxy/claude-opus-4-7"
+      const userCategories = { "ultrabrain": { model: "user/model" } }
       
       // when - user model wins
       const resolved = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -3424,21 +3525,21 @@ describe("sisyphus-task", () => {
     test("FIXED: category built-in model takes precedence over inheritedModel", () => {
       // given a builtin category with its own model, and an inherited model from parent
       // The CORRECT chain: userConfig?.model ?? categoryBuiltIn ?? systemDefaultModel
-      const categoryName = "visual-engineering"
-      const inheritedModel = "anthropic/claude-opus-4-6"
+      const categoryName = "ultrabrain"
+      const inheritedModel = "anthropic/claude-opus-4-7"
       
-      // when category has a built-in model (gemini-3.1-pro for visual-engineering)
+      // when category has a built-in model (gpt-5.5 for ultrabrain)
       const resolved = resolveCategoryConfig(categoryName, { inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
       
       // then category's built-in model should be used, NOT inheritedModel
       expect(resolved).not.toBeNull()
-      expect(resolved!.model).toBe("google/gemini-3.1-pro")
+      expect(resolved!.model).toBe("openai/gpt-5.5")
     })
 
     test("FIXED: systemDefaultModel is used when no userConfig.model and no inheritedModel", () => {
       // given a custom category with no default model
       const categoryName = "custom-no-default"
-      const userCategories = { "custom-no-default": { temperature: 0.5 } } as unknown as Record<string, CategoryConfig>
+      const userCategories: Record<string, CategoryConfig> = { "custom-no-default": { temperature: 0.5 } }
       const systemDefaultModel = "anthropic/claude-sonnet-4-6"
       
       // when no inheritedModel is provided, only systemDefaultModel
@@ -3454,9 +3555,9 @@ describe("sisyphus-task", () => {
 
     test("FIXED: userConfig.model always takes priority over everything", () => {
       // given userConfig.model is explicitly set
-      const categoryName = "visual-engineering"
-      const userCategories = { "visual-engineering": { model: "custom/user-model" } }
-      const inheritedModel = "anthropic/claude-opus-4-6"
+      const categoryName = "ultrabrain"
+      const userCategories = { "ultrabrain": { model: "custom/user-model" } }
+      const inheritedModel = "anthropic/claude-opus-4-7"
       const systemDefaultModel = "anthropic/claude-sonnet-4-6"
       
       // when resolveCategoryConfig is called with all sources
@@ -3475,7 +3576,7 @@ describe("sisyphus-task", () => {
       // given userConfig.model is empty string "" for a custom category (no built-in model)
       const categoryName = "custom-empty-model"
       const userCategories = { "custom-empty-model": { model: "", temperature: 0.3 } }
-      const inheritedModel = "anthropic/claude-opus-4-6"
+      const inheritedModel = "anthropic/claude-opus-4-7"
       
       // when resolveCategoryConfig is called
       const resolved = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -3488,9 +3589,8 @@ describe("sisyphus-task", () => {
     test("FIXED: undefined userConfig.model falls back to category built-in model", () => {
       // given user sets a builtin category but leaves model undefined
       const categoryName = "visual-engineering"
-      // Using type assertion since we're testing fallback behavior for categories without model
-      const userCategories = { "visual-engineering": { temperature: 0.2 } } as unknown as Record<string, CategoryConfig>
-      const inheritedModel = "anthropic/claude-opus-4-6"
+      const userCategories: Record<string, CategoryConfig> = { "visual-engineering": { temperature: 0.2 } }
+      const inheritedModel = "anthropic/claude-opus-4-7"
       
       // when resolveCategoryConfig is called
       const resolved = resolveCategoryConfig(categoryName, { userCategories, inheritedModel, systemDefaultModel: SYSTEM_DEFAULT_MODEL })
@@ -3503,8 +3603,7 @@ describe("sisyphus-task", () => {
     test("systemDefaultModel is used when no other model is available", () => {
       // given - custom category with no model, but systemDefaultModel is set
       const categoryName = "my-custom"
-      // Using type assertion since we're testing fallback behavior for categories without model
-      const userCategories = { "my-custom": { temperature: 0.5 } } as unknown as Record<string, CategoryConfig>
+      const userCategories: Record<string, CategoryConfig> = { "my-custom": { temperature: 0.5 } }
       const systemDefaultModel = "anthropic/claude-sonnet-4-6"
       
       // when
@@ -3558,11 +3657,31 @@ describe("sisyphus-task", () => {
       expect(result).toContain("plan-family")
     })
 
-    test("plan cannot delegate to prometheus (cross-blocking)", async () => {
+    test("prometheus display name cannot delegate to plan (cross-blocking)", async () => {
       //#given
       const { createDelegateTask } = require("./tools")
       const mockClient = {
-         app: { agents: async () => ({ data: [{ name: "prometheus", mode: "subagent" }] }) },
+         app: { agents: async () => ({ data: [{ name: "plan", mode: "subagent" }] }) },
+         config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
+         session: { get: async () => ({ data: { directory: "/project" } }), create: async () => ({ data: { id: "s" } }), prompt: async () => ({ data: {} }), promptAsync: async () => ({ data: {} }), messages: async () => ({ data: [] }), status: async () => ({ data: {} }) },
+       }
+       const tool = createDelegateTask({ manager: { launch: async () => ({}) }, client: mockClient })
+
+      //#when
+      const result = await tool.execute(
+        { description: "test", prompt: "Create a plan", subagent_type: "plan", run_in_background: false, load_skills: [] },
+        { sessionID: "p", messageID: "m", agent: getAgentDisplayName("prometheus"), abort: new AbortController().signal }
+      )
+
+      //#then
+      expect(result).toContain("plan-family")
+    })
+
+    test("plan cannot delegate to prometheus even when it is exposed as a primary agent", async () => {
+      //#given
+      const { createDelegateTask } = require("./tools")
+      const mockClient = {
+         app: { agents: async () => ({ data: [{ name: "prometheus", mode: "primary" }] }) },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
          session: { get: async () => ({ data: { directory: "/project" } }), create: async () => ({ data: { id: "s" } }), prompt: async () => ({ data: {} }), promptAsync: async () => ({ data: {} }), messages: async () => ({ data: [] }), status: async () => ({ data: {} }) },
        }
@@ -3690,7 +3809,7 @@ describe("sisyphus-task", () => {
          app: {
            agents: async () => ({
              data: [
-               { name: "oracle", mode: "subagent", model: { providerID: "anthropic", modelID: "claude-opus-4-6" } },
+               { name: "oracle", mode: "subagent", model: { providerID: "anthropic", modelID: "claude-opus-4-7" } },
              ],
            }),
          },
@@ -3734,7 +3853,7 @@ describe("sisyphus-task", () => {
       // then - matched agent's model should be passed to session.prompt
       expect(promptBody.model).toEqual({
         providerID: "anthropic",
-        modelID: "claude-opus-4-6",
+        modelID: "claude-opus-4-7",
       })
     }, { timeout: 20000 })
 
@@ -3815,7 +3934,7 @@ describe("sisyphus-task", () => {
          app: {
            agents: async () => ({
              data: [
-               { name: "oracle", mode: "subagent", model: { providerID: "openai", modelID: "gpt-5.4" } },
+               { name: "oracle", mode: "subagent", model: { providerID: "openai", modelID: "gpt-5.5" } },
              ],
            }),
          },
@@ -3836,7 +3955,7 @@ describe("sisyphus-task", () => {
          manager: mockManager,
          client: mockClient,
          agentOverrides: {
-           oracle: { model: "anthropic/claude-opus-4-6" },
+           oracle: { model: "anthropic/claude-opus-4-7" },
          },
        })
 
@@ -3862,7 +3981,7 @@ describe("sisyphus-task", () => {
       // then - user-configured model should take priority over matchedAgent.model
       expect(promptBody.model).toEqual({
         providerID: "anthropic",
-        modelID: "claude-opus-4-6",
+        modelID: "claude-opus-4-7",
       })
     }, { timeout: 20000 })
 
@@ -3882,7 +4001,7 @@ describe("sisyphus-task", () => {
          app: {
            agents: async () => ({
              data: [
-               { name: "oracle", mode: "subagent", model: { providerID: "openai", modelID: "gpt-5.4" } },
+               { name: "oracle", mode: "subagent", model: { providerID: "openai", modelID: "gpt-5.5" } },
              ],
            }),
          },
@@ -3903,7 +4022,7 @@ describe("sisyphus-task", () => {
          manager: mockManager,
          client: mockClient,
          agentOverrides: {
-           oracle: { model: "anthropic/claude-opus-4-6", variant: "max" },
+           oracle: { model: "anthropic/claude-opus-4-7", variant: "max" },
          },
        })
 
@@ -3991,11 +4110,11 @@ describe("sisyphus-task", () => {
       )
 
       // then - should resolve via AGENT_MODEL_REQUIREMENTS fallback chain for oracle
-      // oracle fallback chain: gpt-5.4 (openai) > gemini-3.1-pro (google) > claude-opus-4-6 (anthropic)
-      // Since openai is in connectedProviders, should resolve to openai/gpt-5.4
+      // oracle fallback chain: gpt-5.5 (openai) > gemini-3.1-pro (google) > claude-opus-4-7 (anthropic)
+      // Since openai is in connectedProviders, should resolve to openai/gpt-5.5
       expect(promptBody.model).toBeDefined()
       expect(promptBody.model.providerID).toBe("openai")
-      expect(promptBody.model.modelID).toContain("gpt-5.4")
+      expect(promptBody.model.modelID).toContain("gpt-5.5")
     }, { timeout: 20000 })
   })
 
@@ -4055,19 +4174,17 @@ describe("sisyphus-task", () => {
       expect(promptBody.tools.task).toBe(true)
     }, { timeout: 20000 })
 
-    test("prometheus subagent should have task permission (plan family)", async () => {
+    test("prometheus primary agent should not be callable via task", async () => {
       //#given
       const { createDelegateTask } = require("./tools")
-      let promptBody: any
-      const promptMock = async (input: any) => { promptBody = input.body; return { data: {} } }
        const mockClient = {
-         app: { agents: async () => ({ data: [{ name: "prometheus", mode: "subagent" }] }) },
+         app: { agents: async () => ({ data: [{ name: "prometheus", mode: "primary" }] }) },
          config: { get: async () => ({ data: { model: SYSTEM_DEFAULT_MODEL } }) },
          session: {
            get: async () => ({ data: { directory: "/project" } }),
            create: async () => ({ data: { id: "ses_prometheus_task" } }),
-           prompt: promptMock,
-           promptAsync: promptMock,
+           prompt: async () => ({ data: {} }),
+           promptAsync: async () => ({ data: {} }),
            messages: async () => ({ data: [{ info: { role: "assistant" }, parts: [{ type: "text", text: "Plan created" }] }] }),
            status: async () => ({ data: { "ses_prometheus_task": { type: "idle" } } }),
          },
@@ -4075,13 +4192,13 @@ describe("sisyphus-task", () => {
        const tool = createDelegateTask({ manager: { launch: async () => ({}) }, client: mockClient })
       
       //#when
-      await tool.execute(
+      const result = await tool.execute(
         { description: "Test prometheus task permission", prompt: "Create a plan", subagent_type: "prometheus", run_in_background: false, load_skills: [] },
         { sessionID: "p", messageID: "m", agent: "sisyphus", abort: new AbortController().signal }
       )
       
       //#then
-      expect(promptBody.tools.task).toBe(true)
+      expect(result).toContain('Cannot delegate to primary agent "prometheus" via task. Select that agent directly instead.')
     }, { timeout: 20000 })
 
     test("non-plan subagent should NOT have task permission", async () => {
@@ -4183,7 +4300,7 @@ describe("sisyphus-task", () => {
         {
           description: "Implement feature X",
           prompt: "Build the feature",
-          category: "writing",
+          category: "quick",
           run_in_background: false,
           load_skills: [],
         },
@@ -4191,7 +4308,7 @@ describe("sisyphus-task", () => {
       )
 
       // then - title should follow OpenCode format
-      expect(createBody.title).toBe("Implement feature X (@sisyphus-junior subagent)")
+      expect(createBody.title).toBe("Implement feature X (@Sisyphus-Junior subagent)")
     }, { timeout: 10000 })
 
     test("sync task output includes <task_metadata> block with session_id", async () => {
@@ -4232,7 +4349,7 @@ describe("sisyphus-task", () => {
         {
           description: "Test metadata format",
           prompt: "Do something",
-          category: "writing",
+          category: "quick",
           run_in_background: false,
           load_skills: [],
         },
@@ -4290,7 +4407,7 @@ describe("sisyphus-task", () => {
         {
           description: "Background metadata test",
           prompt: "Do something",
-          category: "writing",
+          category: "quick",
           run_in_background: true,
           load_skills: [],
         },

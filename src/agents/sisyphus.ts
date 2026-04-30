@@ -1,7 +1,13 @@
 import type { AgentConfig } from "@opencode-ai/sdk";
 import type { AgentMode, AgentPromptMetadata } from "./types";
-import { isGptModel, isGeminiModel, isGpt5_4Model } from "./types";
-import { getGptApplyPatchPermission } from "./gpt-apply-patch-guard";
+import {
+  isGptModel,
+  isGeminiModel,
+  isGpt5_5Model,
+  isGptNativeSisyphusModel,
+  isClaudeOpus47Model,
+  isKimiK2Model,
+} from "./types";
 import {
   buildGeminiToolMandate,
   buildGeminiDelegationOverride,
@@ -10,8 +16,13 @@ import {
   buildGeminiToolGuide,
   buildGeminiToolCallExamples,
 } from "./sisyphus/gemini";
+import { buildClaudeOpus47SisyphusPrompt } from "./sisyphus/claude-opus-4-7";
 import { buildGpt54SisyphusPrompt } from "./sisyphus/gpt-5-4";
+import { buildGpt55SisyphusPrompt } from "./sisyphus/gpt-5-5";
+import { buildKimiK26SisyphusPrompt } from "./sisyphus/kimi-k2-6";
 import { buildTaskManagementSection } from "./sisyphus/default";
+import { getGptApplyPatchPermission } from "./gpt-apply-patch-guard";
+import { getFrontierToolSchemaPermission } from "./frontier-tool-schema-guard";
 
 const MODE: AgentMode = "primary";
 export const SISYPHUS_PROMPT_METADATA: AgentPromptMetadata = {
@@ -67,10 +78,7 @@ function buildDynamicSisyphusPrompt(
   const oracleSection = buildOracleSection(availableAgents);
   const hardBlocks = buildHardBlocksSection();
   const antiPatterns = buildAntiPatternsSection();
-  const parallelDelegationSection = buildParallelDelegationSection(
-    model,
-    availableCategories,
-  );
+  const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
   const todoHookNote = useTaskSystem
@@ -169,7 +177,7 @@ If any condition fails, do research/clarification only, then wait.
 
 **Delegation Check (MANDATORY before acting directly):**
 1. Is there a specialized agent that perfectly matches this request?
-2. If not, is there a \`task\` category that best describes this task? (visual-engineering, artistry, writing) — or use \`subagent_type\` (general, oracle, explore) and set \`model\` directly for cost tier. What skills are available to equip the agent with?
+2. If not, is there a \`task\` category best describes this task? (visual-engineering, ultrabrain, quick etc.) What skills are available to equip the agent with?
   - MUST FIND skills to use, for: \`task(load_skills=[{skill1}, ...])\` MUST PASS SKILL AS TASK PARAMETER.
 3. Can I do it myself for the best result, FOR SURE? REALLY, REALLY, THERE IS NO APPROPRIATE CATEGORIES TO WORK WITH?
 
@@ -320,15 +328,15 @@ AFTER THE WORK YOU DELEGATED SEEMS DONE, ALWAYS VERIFY THE RESULTS AS FOLLOWING:
 
 ### Session Continuity (MANDATORY)
 
-Every \`task()\` output includes a session_id. **USE IT.**
+Every \`task()\` output includes a task_id. **USE IT.**
 
 **ALWAYS continue when:**
-- Task failed/incomplete → \`session_id=\"{session_id}\", prompt=\"Fix: {specific error}\"\`
-- Follow-up question on result → \`session_id=\"{session_id}\", prompt=\"Also: {question}\"\`
-- Multi-turn with same agent → \`session_id=\"{session_id}\"\` - NEVER start fresh
-- Verification failed → \`session_id=\"{session_id}\", prompt=\"Failed verification: {error}. Fix.\"\`
+- Task failed/incomplete → \`task_id=\"{task_id}\", prompt=\"Fix: {specific error}\"\`
+- Follow-up question on result → \`task_id=\"{task_id}\", prompt=\"Also: {question}\"\`
+- Multi-turn with same agent → \`task_id=\"{task_id}\"\` - NEVER start fresh
+- Verification failed → \`task_id=\"{task_id}\", prompt=\"Failed verification: {error}. Fix.\"\`
 
-**Why session_id is CRITICAL:**
+**Why task_id is CRITICAL:**
 - Subagent has FULL conversation context preserved
 - No repeated file reads, exploration, or setup
 - Saves 70%+ tokens on follow-ups
@@ -336,13 +344,13 @@ Every \`task()\` output includes a session_id. **USE IT.**
 
 \`\`\`typescript
 // WRONG: Starting fresh loses all context
-task(subagent_type="general", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
+task(category="quick", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
 
 // CORRECT: Resume preserves everything
-task(session_id="ses_abc123", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix: Type error on line 42")
+task(task_id="ses_abc123", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix: Type error on line 42")
 \`\`\`
 
-**After EVERY delegation, STORE the session_id for potential continuation.**
+**After EVERY delegation, STORE the task_id for potential continuation.**
 
 ### Code Changes:
 - Match existing patterns (if codebase is disciplined)
@@ -351,35 +359,6 @@ task(session_id="ses_abc123", load_skills=[], run_in_background=false, descripti
 - Never commit unless explicitly requested
 - When refactoring, use various tools to ensure safe refactorings
 - **Bugfix Rule**: Fix minimally. NEVER refactor while fixing.
-
-### Test-Driven Development (MANDATORY for non-trivial changes):
-
-Write tests alongside code to prevent regressions. Follow this order:
-
-1. **Before implementing**: Check if tests exist for the code you're changing. Run \`Grep\` or \`Glob\` for test files related to the module.
-2. **During implementation**: For each significant function or behavior change:
-   - If tests exist → update them to cover the new behavior
-   - If no tests exist → write unit tests for the new/changed code
-3. **After implementation**: Run the test suite. All tests must pass.
-
-**When to write tests:**
-- New functions or methods
-- Bug fixes (write a test that reproduces the bug FIRST, then fix)
-- Changed behavior (update existing tests to match)
-- Edge cases you discover during implementation
-
-**When to skip tests:**
-- Config/env changes with no logic
-- Pure formatting or rename refactors
-- Documentation-only changes
-- User explicitly says not to test
-
-**Test quality rules:**
-- Test behavior, not implementation details
-- Each test should have a clear name describing what it verifies
-- Use the project's existing test framework and patterns
-- Never write tests that always pass (no empty test bodies)
-- Never delete existing tests to make the suite pass
 
 ### Verification:
 
@@ -427,33 +406,16 @@ A task is complete when:
 - [ ] All planned todo items marked done
 - [ ] Diagnostics clean on changed files
 - [ ] Build passes (if applicable)
-- [ ] **Review loop clean** (see below)
 - [ ] User's original request fully addressed
 
-### Review Loop (MANDATORY for non-trivial changes)
-
-After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
-
-1. **Delegate review**: \`task(subagent_type="code-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P-1 through P-4 issues using the 5-axis rubric (Impact × Trigger × Blast Radius × Fix Effort × Confidence). Focus on bugs introduced by recent edits.")\` (\`argus\` is available as an alias for the same agent.)
-2. **Fix ALL P-1 (blocker), P-2 (high), and P-3 (medium) findings.** P-4 (low) — fix if quick, otherwise note and skip.
-3. **Re-review** after fixes — delegate to code-reviewer again to confirm fixes are clean.
-4. **Repeat** until zero P-1, P-2, and P-3 findings.
-
-**Skip the review loop ONLY when:**
-- Changes are trivial (typo fix, config tweak, single-line change)
-- User explicitly says not to review
-- Changes are documentation-only
-
-**Update todos during the loop**: Add a "Review: delegate to code-reviewer (Argus) and fix findings" todo item and track it.
+If verification fails:
+1. Fix issues caused by your changes
+2. Do NOT fix pre-existing issues unless asked
+3. Report: "Done. Note: found N pre-existing lint errors unrelated to my changes."
 
 ### Before Delivering Final Answer:
 - If Oracle is running: **end your response** and wait for the completion notification first.
 - Cancel disposable background tasks individually via \`background_cancel(taskId="...")\`.
-
-If verification or review fails:
-1. Fix issues caused by your changes
-2. Do NOT fix pre-existing issues unless asked
-3. Report: "Done. Note: found N pre-existing lint errors unrelated to my changes."
 </Behavior_Instructions>
 
 ${oracleSection}
@@ -529,7 +491,61 @@ export function createSisyphusAgent(
   const categories = availableCategories ?? [];
   const agents = availableAgents ?? [];
 
-  if (isGpt5_4Model(model)) {
+  if (isKimiK2Model(model)) {
+    const prompt = buildKimiK26SisyphusPrompt(
+      model,
+      agents,
+      tools,
+      skills,
+      categories,
+      useTaskSystem,
+    );
+    return {
+      description:
+        "Powerful AI orchestrator. Plans obsessively with todos, assesses search complexity before exploration, delegates strategically via category+skills combinations. Uses explore for internal code (parallel-friendly), librarian for external docs. (Sisyphus - OhMyOpenCode)",
+      mode: MODE,
+      model,
+      maxTokens: 64000,
+      prompt,
+      color: "#00CED1",
+      permission: {
+        question: "allow",
+        call_omo_agent: "deny",
+        ...getFrontierToolSchemaPermission(model),
+        ...getGptApplyPatchPermission(model),
+      } as AgentConfig["permission"],
+      reasoningEffort: "medium",
+    };
+  }
+
+  if (isGpt5_5Model(model)) {
+    const prompt = buildGpt55SisyphusPrompt(
+      model,
+      agents,
+      tools,
+      skills,
+      categories,
+      useTaskSystem,
+    );
+    return {
+      description:
+        "Powerful AI orchestrator. Plans obsessively with todos, assesses search complexity before exploration, delegates strategically via category+skills combinations. Uses explore for internal code (parallel-friendly), librarian for external docs. (Sisyphus - OhMyOpenCode)",
+      mode: MODE,
+      model,
+      maxTokens: 64000,
+      prompt,
+      color: "#00CED1",
+      permission: {
+        question: "allow",
+        call_omo_agent: "deny",
+        ...getFrontierToolSchemaPermission(model),
+        ...getGptApplyPatchPermission(model),
+      } as AgentConfig["permission"],
+      reasoningEffort: "medium",
+    };
+  }
+
+  if (isGptNativeSisyphusModel(model)) {
     const prompt = buildGpt54SisyphusPrompt(
       model,
       agents,
@@ -549,9 +565,37 @@ export function createSisyphusAgent(
       permission: {
         question: "allow",
         call_omo_agent: "deny",
+        ...getFrontierToolSchemaPermission(model),
         ...getGptApplyPatchPermission(model),
       } as AgentConfig["permission"],
       reasoningEffort: "medium",
+    };
+  }
+
+  if (isClaudeOpus47Model(model)) {
+    const prompt = buildClaudeOpus47SisyphusPrompt(
+      model,
+      agents,
+      tools,
+      skills,
+      categories,
+      useTaskSystem,
+    );
+    return {
+      description:
+        "Powerful AI orchestrator. Plans obsessively with todos, assesses search complexity before exploration, delegates strategically via category+skills combinations. Uses explore for internal code (parallel-friendly), librarian for external docs. (Sisyphus - OhMyOpenCode)",
+      mode: MODE,
+      model,
+      maxTokens: 64000,
+      prompt,
+      color: "#00CED1",
+      permission: {
+        question: "allow",
+        call_omo_agent: "deny",
+        ...getFrontierToolSchemaPermission(model),
+        ...getGptApplyPatchPermission(model),
+      } as AgentConfig["permission"],
+      thinking: { type: "enabled", budgetTokens: 32000 },
     };
   }
 
@@ -568,13 +612,13 @@ export function createSisyphusAgent(
     // 1. Intent gate + tool mandate - early in prompt (after intent verbalization)
     prompt = prompt.replace(
       "</intent_verbalization>",
-      `</intent_verbalization>\n\n${buildGeminiIntentGateEnforcement()}\n\n${buildGeminiToolMandate()}`,
+      `</intent_verbalization>\n\n${buildGeminiIntentGateEnforcement()}\n\n${buildGeminiToolMandate()}`
     );
 
     // 2. Tool guide + examples - after tool_usage_rules (where tools are discussed)
     prompt = prompt.replace(
       "</tool_usage_rules>",
-      `</tool_usage_rules>\n\n${buildGeminiToolGuide()}\n\n${buildGeminiToolCallExamples()}`,
+      `</tool_usage_rules>\n\n${buildGeminiToolGuide()}\n\n${buildGeminiToolCallExamples()}`
     );
 
     // 3. Delegation + verification overrides - before Constraints (NOT at prompt end)
@@ -582,13 +626,14 @@ export function createSisyphusAgent(
     //    Placing these before <Constraints> ensures they're in a high-attention zone.
     prompt = prompt.replace(
       "<Constraints>",
-      `${buildGeminiDelegationOverride()}\n\n${buildGeminiVerificationOverride()}\n\n<Constraints>`,
+      `${buildGeminiDelegationOverride()}\n\n${buildGeminiVerificationOverride()}\n\n<Constraints>`
     );
   }
 
   const permission = {
     question: "allow",
     call_omo_agent: "deny",
+    ...getFrontierToolSchemaPermission(model),
     ...getGptApplyPatchPermission(model),
   } as AgentConfig["permission"];
   const base = {

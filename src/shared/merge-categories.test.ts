@@ -15,24 +15,30 @@ describe("mergeCategories", () => {
   })
 
   it("filters out categories with disable: true", () => {
+    //#given
     const userCategories = {
-      "writing": { disable: true },
+      "quick": { disable: true },
     }
 
+    //#when
     const result = mergeCategories(userCategories)
 
-    expect(result["writing"]).toBeUndefined()
+    //#then
+    expect(result["quick"]).toBeUndefined()
     expect(Object.keys(result).length).toBe(Object.keys(DEFAULT_CATEGORIES).length - 1)
   })
 
   it("keeps categories with disable: false", () => {
+    //#given
     const userCategories = {
-      "writing": { disable: false },
+      "quick": { disable: false },
     }
 
+    //#when
     const result = mergeCategories(userCategories)
 
-    expect(result["writing"]).toBeDefined()
+    //#then
+    expect(result["quick"]).toBeDefined()
   })
 
   it("allows user to add custom categories", () => {
@@ -65,14 +71,14 @@ describe("mergeCategories", () => {
   it("user overrides merge with defaults", () => {
     //#given
     const userCategories = {
-      "visual-engineering": { model: "anthropic/claude-opus-4-6" },
+      "ultrabrain": { model: "anthropic/claude-opus-4-7" },
     }
 
     //#when
     const result = mergeCategories(userCategories)
 
     //#then
-    expect(result["visual-engineering"]).toBeDefined()
-    expect(result["visual-engineering"].model).toBe("anthropic/claude-opus-4-6")
+    expect(result["ultrabrain"]).toBeDefined()
+    expect(result["ultrabrain"].model).toBe("anthropic/claude-opus-4-7")
   })
 })

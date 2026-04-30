@@ -1,6 +1,7 @@
 import type { OhMyOpenCodeConfig, HookName } from "../../config";
 import type { BackgroundManager } from "../../features/background-agent";
 import type { TeammateRegistry } from "../../features/teammates";
+import type { ModelFallbackControllerAccessor } from "../../hooks/model-fallback";
 import type { ModelCacheState } from "../../plugin-state";
 import type { PluginContext } from "../types";
 
@@ -103,6 +104,7 @@ export function createSessionHooks(args: {
   safeHookEnabled: boolean;
   backgroundManager: BackgroundManager;
   teammateRegistry?: TeammateRegistry;
+  modelFallbackControllerAccessor?: ModelFallbackControllerAccessor;
 }): SessionHooks {
   const {
     ctx,
@@ -112,6 +114,7 @@ export function createSessionHooks(args: {
     safeHookEnabled,
     backgroundManager,
     teammateRegistry,
+    modelFallbackControllerAccessor,
   } = args;
   const safeHook = <T>(hookName: HookName, factory: () => T): T | null =>
     safeCreateHook(hookName, factory, { enabled: safeHookEnabled });
@@ -232,6 +235,7 @@ export function createSessionHooks(args: {
                 .catch(() => {});
             },
             onApplied: enableFallbackTitle ? updateFallbackTitle : undefined,
+            controllerAccessor: modelFallbackControllerAccessor,
           }),
         )
       : null;

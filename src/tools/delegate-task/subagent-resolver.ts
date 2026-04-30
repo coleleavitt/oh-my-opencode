@@ -2,40 +2,29 @@ import type { DelegateTaskArgs } from "./types"
 import type { ExecutorContext } from "./executor-types"
 import type { DelegatedModelConfig } from "./types"
 import { isPlanFamily } from "./constants"
-import { SISYPHUS_JUNIOR_AGENT, SISYPHUS_JUNIOR_DISPLAY } from "./sisyphus-junior-agent"
+import { SISYPHUS_JUNIOR_AGENT } from "./sisyphus-junior-agent"
+import { applyCategoryParams } from "./delegated-model-config"
+import { resolveEffectiveFallbackEntry } from "./fallback-entry-resolution"
+import { applyFallbackEntrySettings } from "./fallback-entry-settings"
+import {
+  type AgentInfo,
+  sanitizeSubagentType,
+  mergeWithClaudeCodeAgents,
+  findPrimaryAgentMatch,
+  findCallableAgentMatch,
+  listCallableAgentNames,
+} from "./subagent-discovery"
 import { normalizeModelFormat } from "../../shared/model-format-normalizer"
 import { AGENT_MODEL_REQUIREMENTS } from "../../shared/model-requirements"
 import { normalizeFallbackModels, flattenToFallbackModelStrings } from "../../shared/model-resolver"
-import { buildFallbackChainFromModels, findMostSpecificFallbackEntry } from "../../shared/fallback-chain-from-models"
-import { getAgentDisplayName, getAgentConfigKey } from "../../shared/agent-display-names"
+import { buildFallbackChainFromModels } from "../../shared/fallback-chain-from-models"
+import { getAgentConfigKey, stripAgentListSortPrefix } from "../../shared/agent-display-names"
 import { normalizeSDKResponse } from "../../shared"
 import { log } from "../../shared/logger"
 import { getAvailableModelsForDelegateTask } from "./available-models"
 import type { FallbackEntry } from "../../shared/model-requirements"
 import { resolveModelForDelegateTask } from "./model-selection"
 import { fuzzyMatchModel } from "../../shared/model-availability"
-import type { CategoryConfig } from "../../config/schema"
-import { getAgentRequiredMcpServers } from "../../agents/agent-capabilities"
-
-type AgentMode = "subagent" | "primary" | "all" | undefined
-
-function applyCategoryParams(
-  base: DelegatedModelConfig,
-  config: CategoryConfig | undefined,
-): DelegatedModelConfig {
-  if (!config) {
-    return base
-  }
-
-  return {
-    ...base,
-    ...(config.reasoningEffort !== undefined ? { reasoningEffort: config.reasoningEffort } : {}),
-    ...(config.temperature !== undefined ? { temperature: config.temperature } : {}),
-    ...(config.top_p !== undefined ? { top_p: config.top_p } : {}),
-    ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}),
-    ...(config.thinking !== undefined ? { thinking: config.thinking } : {}),
-  }
-}
 
 export async function resolveSubagentExecution(
   args: DelegateTaskArgs,
@@ -49,15 +38,13 @@ export async function resolveSubagentExecution(
     return { agentToUse: "", categoryModel: undefined, error: `Agent name cannot be empty.` }
   }
 
-  // Strip wrapping characters (backslashes, quotes) that LLMs sometimes add around agent names
-  // e.g. \hephaestus\ -> hephaestus, "oracle" -> oracle, 'explore' -> explore
-  const agentName = args.subagent_type.trim().replace(/^[\\\/"']+|[\\\/"']+$/g, "").trim()
+  const agentName = sanitizeSubagentType(args.subagent_type)
 
   if (agentName.toLowerCase() === SISYPHUS_JUNIOR_AGENT.toLowerCase()) {
     return {
       agentToUse: "",
       categoryModel: undefined,
-      error: `Cannot use subagent_type="${SISYPHUS_JUNIOR_DISPLAY}" directly. Use category parameter instead (e.g., ${categoryExamples}).
+      error: `Cannot use subagent_type="${SISYPHUS_JUNIOR_AGENT}" directly. Use category parameter instead (e.g., ${categoryExamples}).
 
 Sisyphus-Junior is spawned automatically when you specify a category. Pick the appropriate category for your task domain.`,
     }
@@ -79,70 +66,33 @@ Create the work plan directly - that's your job as the planning agent.`,
 
   try {
     const agentsResult = await client.app.agents()
-    type AgentInfo = {
-      name: string
-      mode?: "subagent" | "primary" | "all"
-      model?: string | { providerID: string; modelID: string }
-    }
     const agents = normalizeSDKResponse(agentsResult, [] as AgentInfo[], {
       preferResponseOnMissingData: true,
     })
 
-    const callableAgents = agents.filter((agent) => isTaskCallableAgentMode(agent.mode))
+    const mergedAgents = mergeWithClaudeCodeAgents(agents, executorCtx.directory)
+    const matchedPrimaryAgent = findPrimaryAgentMatch(mergedAgents, agentToUse)
 
-    const resolvedDisplayName = getAgentDisplayName(agentToUse).replace(/^\u200B+/, "")
-    const normalizedAgentToUse = agentToUse.replace(/^\u200B+/, "")
-    const matchedAgent = callableAgents.find(
-      (agent) => agent.name.toLowerCase() === normalizedAgentToUse.toLowerCase()
-        || agent.name.toLowerCase() === resolvedDisplayName.toLowerCase()
-    )
-    if (!matchedAgent) {
-      const availableAgents = callableAgents
-        .map((a) => a.name)
-        .sort()
-        .join(", ")
+    if (matchedPrimaryAgent) {
       return {
         agentToUse: "",
         categoryModel: undefined,
-        error: `Unknown agent: "${agentToUse}". Available agents: ${availableAgents}`,
+        error: `Cannot delegate to primary agent "${stripAgentListSortPrefix(matchedPrimaryAgent.name)}" via task. Select that agent directly instead.`,
       }
     }
 
-    agentToUse = matchedAgent.name
+    const matchedAgent = findCallableAgentMatch(mergedAgents, agentToUse)
+    if (!matchedAgent) {
+      return {
+        agentToUse: "",
+        categoryModel: undefined,
+        error: `Unknown agent: "${agentToUse}". Available agents: ${listCallableAgentNames(mergedAgents)}`,
+      }
+    }
+
+    agentToUse = stripAgentListSortPrefix(matchedAgent.name)
 
     const agentConfigKey = getAgentConfigKey(agentToUse)
-
-    // MCP-required pre-flight: if the agent declares MCP servers it
-    // needs (e.g. multimodal-looker → "playwright"), check the live
-    // connection status and error out early if any are missing.
-    // Without this check the task spawns, starts running, hits its
-    // first MCP tool call, fails with a cryptic "tool not found",
-    // and the user sees a dead subagent. Fault-tolerant: if the
-    // status call itself fails (SDK error, server not reachable),
-    // skip the check rather than blocking dispatch.
-    const requiredMcpServers = getAgentRequiredMcpServers(agentConfigKey)
-    if (requiredMcpServers.length > 0) {
-      try {
-        const statusResp = await client.mcp.status({})
-        const status = (statusResp.data ?? {}) as Record<string, { status: string }>
-        const missing = requiredMcpServers.filter((name) => status[name]?.status !== "connected")
-        if (missing.length > 0) {
-          const details = missing.map((name) => `${name}=${status[name]?.status ?? "unknown"}`).join(", ")
-          return {
-            agentToUse: "",
-            categoryModel: undefined,
-            error: `Agent "${agentToUse}" requires MCP server(s) [${requiredMcpServers.join(", ")}] to be connected, but the following are not reachable: ${details}. Connect them (e.g. via the /mcp dialog) or delegate to a different agent.`,
-          }
-        }
-      } catch (err) {
-        log("[task/resolver] mcp.status pre-flight failed; skipping requiredMcpServers check", {
-          agent: agentToUse,
-          required: requiredMcpServers,
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-    }
-
     const agentOverride = agentOverrides?.[agentConfigKey as keyof typeof agentOverrides]
       ?? (agentOverrides ? Object.entries(agentOverrides).find(([key]) => key.toLowerCase() === agentConfigKey)?.[1] : undefined)
     const agentRequirement = AGENT_MODEL_REQUIREMENTS[agentConfigKey]
@@ -205,29 +155,18 @@ Create the work plan directly - that's your job as the planning agent.`,
         defaultProviderID,
       )
       fallbackChain = configuredFallbackChain ?? (resolutionSkipped ? undefined : agentRequirement?.fallbackChain)
-
-      // Only promote fallback-only settings when resolution actually selected a fallback model.
-      const resolvedFallbackEntry = (resolution && !('skipped' in resolution)) ? resolution.fallbackEntry : undefined
-      const matchedFallback = (resolution && !('skipped' in resolution)) ? resolution.matchedFallback === true : false
-      const effectiveEntry = matchedFallback && categoryModel
-        ? (
-            resolvedFallbackEntry
-            ?? (configuredFallbackChain
-              ? findMostSpecificFallbackEntry(categoryModel.providerID, categoryModel.modelID, configuredFallbackChain)
-              : undefined)
-          )
-        : undefined
+      const effectiveEntry = resolveEffectiveFallbackEntry({
+        categoryModel,
+        configuredFallbackChain,
+        resolution,
+      })
 
       if (categoryModel && effectiveEntry) {
-        categoryModel = {
-          ...categoryModel,
-          variant: agentOverride?.variant ?? effectiveEntry.variant ?? categoryModel.variant,
-          reasoningEffort: effectiveEntry.reasoningEffort ?? categoryModel.reasoningEffort,
-          temperature: effectiveEntry.temperature ?? categoryModel.temperature,
-          top_p: effectiveEntry.top_p ?? categoryModel.top_p,
-          maxTokens: effectiveEntry.maxTokens ?? categoryModel.maxTokens,
-          thinking: effectiveEntry.thinking ?? categoryModel.thinking,
-        }
+        categoryModel = applyFallbackEntrySettings({
+          categoryModel,
+          effectiveEntry,
+          variantOverride: agentOverride?.variant,
+        })
       }
     }
 
@@ -261,8 +200,4 @@ Create the work plan directly - that's your job as the planning agent.`,
   }
 
   return { agentToUse, categoryModel, fallbackChain }
-}
-
-function isTaskCallableAgentMode(mode: AgentMode): boolean {
-  return mode === "all" || mode === "subagent"
 }

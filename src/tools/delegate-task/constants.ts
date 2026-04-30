@@ -2,10 +2,12 @@ import type {
    AvailableCategory,
    AvailableSkill,
  } from "../../agents/dynamic-agent-prompt-builder"
+import { getAgentConfigKey } from "../../shared/agent-display-names"
 import { truncateDescription } from "../../shared/truncate-description"
 export {
   CATEGORY_DESCRIPTIONS,
   CATEGORY_PROMPT_APPENDS,
+  CATEGORY_PROMPT_APPEND_RESOLVERS,
   DEFAULT_CATEGORIES,
 } from "./builtin-categories"
 
@@ -341,6 +343,6 @@ export function isPlanFamily(category: string): boolean
 export function isPlanFamily(category: string | undefined): boolean
 export function isPlanFamily(category: string | undefined): boolean {
   if (!category) return false
-  const lowerCategory = category.toLowerCase().trim()
+  const lowerCategory = getAgentConfigKey(category).toLowerCase().trim()
   return PLAN_FAMILY_NAMES.some((name) => lowerCategory === name)
 }

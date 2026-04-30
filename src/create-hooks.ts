@@ -4,6 +4,7 @@ import type { LoadedSkill } from "./features/opencode-skill-loader/types"
 import type { BackgroundManager } from "./features/background-agent"
 import type { SkillMcpManager } from "./features/skill-mcp-manager"
 import type { TeammateRegistry } from "./features/teammates"
+import type { ModelFallbackControllerAccessor } from "./hooks/model-fallback"
 import type { PluginContext } from "./plugin/types"
 import type { ModelCacheState } from "./plugin-state"
 
@@ -40,6 +41,7 @@ export function createHooks(args: {
   backgroundManager: BackgroundManager
   skillMcpManager: SkillMcpManager
   teammateRegistry?: TeammateRegistry
+  modelFallbackControllerAccessor?: ModelFallbackControllerAccessor
   isHookEnabled: (hookName: HookName) => boolean
   safeHookEnabled: boolean
   mergedSkills: LoadedSkill[]
@@ -52,6 +54,7 @@ export function createHooks(args: {
     backgroundManager,
     skillMcpManager: _skillMcpManager,
     teammateRegistry,
+    modelFallbackControllerAccessor,
     isHookEnabled,
     safeHookEnabled,
     mergedSkills,
@@ -62,10 +65,10 @@ export function createHooks(args: {
     ctx,
     pluginConfig,
     modelCacheState,
+    backgroundManager,
+    modelFallbackControllerAccessor,
     isHookEnabled,
     safeHookEnabled,
-    backgroundManager,
-    teammateRegistry,
   })
 
   const continuation = createContinuationHooks({

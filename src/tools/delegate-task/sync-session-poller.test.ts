@@ -1,58 +1,16 @@
-declare const require: (name: string) => any;
-const { describe, test, expect, beforeEach, afterEach } = require("bun:test");
-import { __setTimingConfig, __resetTimingConfig } from "./timing";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+declare const require: (name: string) => any
+import { __setTimingConfig, __resetTimingConfig } from "./timing"
 
 function createMockCtx(aborted = false) {
-  const controller = new AbortController();
-  if (aborted) controller.abort();
+  const controller = new AbortController()
+  if (aborted) controller.abort()
   return {
     sessionID: "parent-session",
     messageID: "parent-message",
     agent: "test-agent",
     abort: controller.signal,
-  };
-}
-
-async function* createMockEventStream(
-  sessionID: string,
-  events: Array<{ type: string; delay?: number }>,
-): AsyncGenerator<{ type: string; properties: unknown }> {
-  for (const evt of events) {
-    if (evt.delay) await new Promise((r) => setTimeout(r, evt.delay));
-    if (evt.type === "session.idle") {
-      yield { type: "session.idle", properties: { sessionID } };
-    } else if (evt.type === "session.status.idle") {
-      yield {
-        type: "session.status",
-        properties: { sessionID, status: { type: "idle" } },
-      };
-    } else if (evt.type === "session.status.busy") {
-      yield {
-        type: "session.status",
-        properties: { sessionID, status: { type: "busy" } },
-      };
-    } else if (evt.type === "message.updated") {
-      yield { type: "message.updated", properties: { sessionID } };
-    }
   }
-}
-
-function createMockClient(
-  sessionID: string,
-  events: Array<{ type: string; delay?: number }>,
-) {
-  return {
-    event: {
-      subscribe: async () => ({
-        stream: createMockEventStream(sessionID, events),
-      }),
-    },
-    session: {
-      abort: async () => {},
-      messages: async () => ({ data: [] }),
-      status: async () => ({ data: {} }),
-    },
-  };
 }
 
 describe("pollSyncSession", () => {
@@ -62,103 +20,233 @@ describe("pollSyncSession", () => {
       MIN_STABILITY_TIME_MS: 0,
       STABILITY_POLLS_REQUIRED: 1,
       MAX_POLL_TIME_MS: 5000,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    __resetTimingConfig();
-  });
+    __resetTimingConfig()
+  })
 
-  describe("event-driven completion", () => {
-    test("completes when session.idle event is received", async () => {
-      //#given - SSE stream that emits session.idle
-      const { pollSyncSession } = require("./sync-session-poller");
-      const mockClient = createMockClient("ses_test", [
-        { type: "session.idle" },
-      ]);
+  describe("native finish-based completion", () => {
+    test("returns terminal session error when assistant message contains info.error", async () => {
+      // given: error in assistant message
+      const { pollSyncSession } = require("./sync-session-poller")
 
-      //#when
-      const result = await pollSyncSession(createMockCtx(), mockClient, {
-        sessionID: "ses_test",
-        agentToUse: "test-agent",
-        toastManager: null,
-        taskId: undefined,
-      });
-
-      //#then - should return null (success)
-      expect(result).toBeNull();
-    });
-
-    test("completes when session.status with type idle is received", async () => {
-      //#given - SSE stream that emits session.status with idle type
-      const { pollSyncSession } = require("./sync-session-poller");
-      const mockClient = createMockClient("ses_test", [
-        { type: "session.status.busy" },
-        { type: "session.status.idle" },
-      ]);
-
-      //#when
-      const result = await pollSyncSession(createMockCtx(), mockClient, {
-        sessionID: "ses_test",
-        agentToUse: "test-agent",
-        toastManager: null,
-        taskId: undefined,
-      });
-
-      //#then
-      expect(result).toBeNull();
-    });
-
-    test("ignores events for different sessions", async () => {
-      //#given - SSE stream with events for wrong session, then correct session
-      const { pollSyncSession } = require("./sync-session-poller");
-
-      let callCount = 0;
-      async function* stream(): AsyncGenerator<{
-        type: string;
-        properties: unknown;
-      }> {
-        yield {
-          type: "session.idle",
-          properties: { sessionID: "other_session" },
-        };
-        yield { type: "session.idle", properties: { sessionID: "ses_test" } };
+      const mockClient = {
+        session: {
+          messages: async () => ({
+            data: [
+              { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+              {
+                info: {
+                  id: "msg_002",
+                  role: "assistant",
+                  time: { created: 2000 },
+                  error: { data: { message: "Forbidden: Selected provider is forbidden" } },
+                },
+                parts: [],
+              },
+            ],
+          }),
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+        },
       }
 
-      const mockClient = {
-        event: { subscribe: async () => ({ stream: stream() }) },
-        session: {
-          abort: async () => {},
-          messages: async () => {
-            callCount++;
-            return { data: [] };
-          },
-          status: async () => ({ data: {} }),
-        },
-      };
-
-      //#when
+      // when: calling pollSyncSession
       const result = await pollSyncSession(createMockCtx(), mockClient, {
         sessionID: "ses_test",
         agentToUse: "test-agent",
         toastManager: null,
         taskId: undefined,
-      });
+      })
 
-      //#then
-      expect(result).toBeNull();
-      expect(callCount).toBeGreaterThan(1);
-    });
+      // then: returns error message
+      expect(result).toBe("Forbidden: Selected provider is forbidden")
+    })
 
-    test("keeps polling when finish is 'stop' but assistant still has tool-call parts", async () => {
-      //#given
-      const { pollSyncSession } = require("./sync-session-poller");
+    test("ignores stale prior-turn assistant errors after a new user turn starts", async () => {
+      // given: prior error exists but user sent new message
+      const { pollSyncSession } = require("./sync-session-poller")
 
-      let callCount = 0;
+      const mockClient = {
+        session: {
+          messages: async () => ({
+            data: [
+              { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+              {
+                info: {
+                  id: "msg_002",
+                  role: "assistant",
+                  time: { created: 2000 },
+                  error: { data: { message: "Forbidden: Selected provider is forbidden" } },
+                },
+                parts: [],
+              },
+              { info: { id: "msg_003", role: "user", time: { created: 3000 } } },
+            ],
+          }),
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+          abort: async () => ({}),
+        },
+      }
+
+      // when: calling with stale error
+      const result = await pollSyncSession(createMockCtx(), mockClient, {
+        sessionID: "ses_test",
+        agentToUse: "test-agent",
+        toastManager: null,
+        taskId: undefined,
+        anchorMessageCount: 2,
+      }, 50)
+
+      // then: times out (ignores stale error)
+      expect(result).toContain("Poll timeout reached")
+    })
+
+    test("detects completion when assistant message has terminal finish reason", async () => {
+      // given: terminal assistant finish with assistant id > user id
+      const { pollSyncSession } = require("./sync-session-poller")
+
+      const mockClient = {
+        session: {
+          messages: async () => ({
+            data: [
+              { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+              {
+                info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "stop" },
+                parts: [{ type: "text", text: "Done" }],
+              },
+            ],
+          }),
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+        },
+      }
+
+      // when: calling pollSyncSession
+      const result = await pollSyncSession(createMockCtx(), mockClient, {
+        sessionID: "ses_test",
+        agentToUse: "test-agent",
+        toastManager: null,
+        taskId: undefined,
+      })
+
+      // then: returns null (success)
+      expect(result).toBeNull()
+    })
+
+    test("keeps polling when assistant finish is tool-calls (non-terminal)", async () => {
+      // given: first poll returns tool-calls, second returns end_turn
+      const { pollSyncSession } = require("./sync-session-poller")
+
+      let callCount = 0
       const mockClient = {
         session: {
           messages: async () => {
-            callCount++;
+            callCount++
+            if (callCount <= 2) {
+              return {
+                data: [
+                  { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                  {
+                    info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "tool-calls" },
+                    parts: [{ type: "tool-call", text: "calling tool" }],
+                  },
+                ],
+              }
+            }
+            return {
+              data: [
+                { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                {
+                  info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "tool-calls" },
+                  parts: [{ type: "tool-call", text: "calling tool" }],
+                },
+                { info: { id: "msg_003", role: "user", time: { created: 3000 } } },
+                {
+                  info: { id: "msg_004", role: "assistant", time: { created: 4000 }, finish: "end_turn" },
+                  parts: [{ type: "text", text: "Final answer" }],
+                },
+              ],
+            }
+          },
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+        },
+      }
+
+      // when: calling pollSyncSession
+      const result = await pollSyncSession(createMockCtx(), mockClient, {
+        sessionID: "ses_test",
+        agentToUse: "test-agent",
+        toastManager: null,
+        taskId: undefined,
+      })
+
+      // then: returns null after polling continues
+      expect(result).toBeNull()
+      expect(callCount).toBeGreaterThan(2)
+    })
+
+    test("keeps polling when finish is 'unknown' (non-terminal)", async () => {
+      // given: first poll returns unknown finish
+      const { pollSyncSession } = require("./sync-session-poller")
+
+      let callCount = 0
+      const mockClient = {
+        session: {
+          messages: async () => {
+            callCount++
+            if (callCount <= 1) {
+              return {
+                data: [
+                  { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                  {
+                    info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "unknown" },
+                    parts: [],
+                  },
+                ],
+              }
+            }
+            return {
+              data: [
+                { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                {
+                  info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "unknown" },
+                  parts: [],
+                },
+                { info: { id: "msg_003", role: "user", time: { created: 3000 } } },
+                {
+                  info: { id: "msg_004", role: "assistant", time: { created: 4000 }, finish: "stop" },
+                  parts: [{ type: "text", text: "Done" }],
+                },
+              ],
+            }
+          },
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+        },
+      }
+
+      // when: calling pollSyncSession
+      const result = await pollSyncSession(createMockCtx(), mockClient, {
+        sessionID: "ses_test",
+        agentToUse: "test-agent",
+        toastManager: null,
+        taskId: undefined,
+      })
+
+      // then: returns null after polling continues
+      expect(result).toBeNull()
+      expect(callCount).toBeGreaterThan(1)
+    })
+
+    test("keeps polling when finish is 'stop' but assistant still has tool-call parts", async () => {
+      // given: finish is stop but tool-call parts exist
+      const { pollSyncSession } = require("./sync-session-poller")
+
+      let callCount = 0
+      const mockClient = {
+        session: {
+          messages: async () => {
+            callCount++
             if (callCount <= 1) {
               return {
                 data: [
@@ -168,7 +256,7 @@ describe("pollSyncSession", () => {
                     parts: [{ type: "tool-call", text: "calling tool" }],
                   },
                 ],
-              };
+              }
             }
             return {
               data: [
@@ -183,337 +271,386 @@ describe("pollSyncSession", () => {
                   parts: [{ type: "text", text: "Done" }],
                 },
               ],
-            };
+            }
           },
           status: async () => ({ data: { "ses_test": { type: "idle" } } }),
         },
-      };
+      }
 
-      //#when
+      // when: calling pollSyncSession
       const result = await pollSyncSession(createMockCtx(), mockClient, {
         sessionID: "ses_test",
         agentToUse: "test-agent",
         toastManager: null,
         taskId: undefined,
-      });
+      })
 
-      //#then
-      expect(result).toBeNull();
-      expect(callCount).toBeGreaterThan(1);
-    });
+      // then: returns null after polling continues
+      expect(result).toBeNull()
+      expect(callCount).toBeGreaterThan(1)
+    })
 
     test("does not complete when assistant id < user id (user sent after assistant)", async () => {
-      //#given - assistant finished but user message came after it (agent still processing)
-      const { pollSyncSession } = require("./sync-session-poller");
+      // given: assistant finished but user message came after it
+      const { pollSyncSession } = require("./sync-session-poller")
 
-      async function* idleStream(): AsyncGenerator<{ type: string; properties: unknown }> {
-        yield { type: "session.idle", properties: { sessionID: "ses_test" } };
+      let callCount = 0
+      const mockClient = {
+        session: {
+          messages: async () => {
+            callCount++
+            if (callCount <= 1) {
+              return {
+                data: [
+                  { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                  {
+                    info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "end_turn" },
+                    parts: [{ type: "text", text: "Partial" }],
+                  },
+                  { info: { id: "msg_003", role: "user", time: { created: 3000 } } },
+                ],
+              }
+            }
+            return {
+              data: [
+                { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                {
+                  info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "end_turn" },
+                  parts: [{ type: "text", text: "Partial" }],
+                },
+                { info: { id: "msg_003", role: "user", time: { created: 3000 } } },
+                {
+                  info: { id: "msg_004", role: "assistant", time: { created: 4000 }, finish: "end_turn" },
+                  parts: [{ type: "text", text: "Final" }],
+                },
+              ],
+            }
+          },
+          status: async () => ({ data: { "ses_test": { type: "idle" } } }),
+        },
       }
 
-      const mockClient = {
-        event: { subscribe: async () => ({ stream: idleStream() }) },
-        session: {
-          abort: async () => {},
-          messages: async () => ({ data: [] }),
-          status: async () => ({ data: {} }),
-        },
-      };
-
-      //#when
+      // when: calling pollSyncSession
       const result = await pollSyncSession(createMockCtx(), mockClient, {
         sessionID: "ses_test",
         agentToUse: "test-agent",
         toastManager: null,
         taskId: undefined,
-      });
+      })
 
-      //#then
-      expect(result).toBeNull();
-    });
-  });
+      // then: returns null after polling continues
+      expect(result).toBeNull()
+      expect(callCount).toBeGreaterThan(1)
+    })
+  })
 
   describe("abort handling", () => {
-    test("returns abort message when signal is aborted before stream", async () => {
-      //#given - context already aborted
-      const { pollSyncSession } = require("./sync-session-poller");
+    test("#given session completed AND abort fires #then returns completion result not abort", async () => {
+      // given: session completes and abort fires
+      const { pollSyncSession } = require("./sync-session-poller")
+      const controller = new AbortController()
+      controller.abort()
 
-      async function* stream(): AsyncGenerator<{
-        type: string;
-        properties: unknown;
-      }> {
-        yield {
-          type: "message.updated",
-          properties: { sessionID: "ses_abort" },
-        };
+      let abortCount = 0
+      let messageCallCount = 0
+      const mockClient = {
+        session: {
+          abort: async () => {
+            abortCount++
+          },
+          messages: async () => {
+            messageCallCount++
+            return {
+              data: [
+                { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                {
+                  info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "stop" },
+                  parts: [{ type: "text", text: "Done" }],
+                },
+              ],
+            }
+          },
+          status: async () => ({ data: {} }),
+        },
       }
 
+      // when: calling pollSyncSession
+      const result = await pollSyncSession({
+        sessionID: "parent-session",
+        messageID: "parent-message",
+        agent: "test-agent",
+        abort: controller.signal,
+      }, mockClient, {
+        sessionID: "ses_abort_complete",
+        agentToUse: "test-agent",
+        toastManager: { removeTask: () => {} },
+        taskId: "task_123",
+        anchorMessageCount: 1,
+      })
+
+      // then: returns null with no abort
+      expect(result).toBeNull()
+      expect(messageCallCount).toBe(1)
+      expect(abortCount).toBe(0)
+    })
+
+    test("returns abort message when signal is aborted", async () => {
+      // given: abort signal already aborted
+      const { pollSyncSession } = require("./sync-session-poller")
+      let abortCount = 0
       const mockClient = {
-        event: { subscribe: async () => ({ stream: stream() }) },
         session: {
-          abort: async () => {},
+          abort: async () => {
+            abortCount++
+          },
           messages: async () => ({ data: [] }),
           status: async () => ({ data: {} }),
         },
-      };
+      }
 
-      //#when
+      // when: calling pollSyncSession with aborted signal
       const result = await pollSyncSession(createMockCtx(true), mockClient, {
         sessionID: "ses_abort",
         agentToUse: "test-agent",
         toastManager: { removeTask: () => {} },
         taskId: "task_123",
-      });
+      })
 
-      //#then
-      expect(result).toContain("Task aborted");
-      expect(result).toContain("ses_abort");
-    });
-  });
+      // then: returns abort message
+      expect(result).toContain("Task aborted")
+      expect(result).toContain("ses_abort")
+      expect(abortCount).toBe(1)
+    })
+  })
 
   describe("timeout handling", () => {
-    test("returns timeout error when maxWaitMs exceeded", async () => {
-      //#given - stream that never emits idle
-      const { pollSyncSession } = require("./sync-session-poller");
+    test("returns error string on timeout", async () => {
+      // given: no terminal finish and short timeout
+      const { pollSyncSession } = require("./sync-session-poller")
 
-      async function* slowStream(): AsyncGenerator<{
-        type: string;
-        properties: unknown;
-      }> {
-        await new Promise((r) => setTimeout(r, 200));
-        yield {
-          type: "session.idle",
-          properties: { sessionID: "ses_timeout" },
-        };
-      }
+      __setTimingConfig({
+        POLL_INTERVAL_MS: 10,
+        MIN_STABILITY_TIME_MS: 0,
+        STABILITY_POLLS_REQUIRED: 1,
+        MAX_POLL_TIME_MS: 0,
+      })
 
+      let abortCount = 0
       const mockClient = {
-        event: { subscribe: async () => ({ stream: slowStream() }) },
         session: {
-          abort: async () => {},
-          messages: async () => ({ data: [] }),
-          status: async () => ({ data: {} }),
-        },
-      };
-
-      //#when - use very short timeout
-      const result = await pollSyncSession(
-        createMockCtx(),
-        mockClient,
-        {
-          sessionID: "ses_timeout",
-          agentToUse: "test-agent",
-          toastManager: null,
-          taskId: undefined,
-        },
-        50,
-      );
-
-      //#then - should return timeout error
-      expect(result).toContain("timeout");
-      expect(result).toContain("ses_timeout");
-    });
-  });
-
-  describe("SSE subscription failure", () => {
-    test("returns error when event.subscribe throws", async () => {
-      //#given - client that throws on subscribe
-      const { pollSyncSession } = require("./sync-session-poller");
-
-      const mockClient = {
-        event: {
-          subscribe: async () => {
-            throw new Error("Connection refused");
+          abort: async () => {
+            abortCount++
           },
+          messages: async () => ({
+            data: [
+              { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+            ],
+          }),
+          status: async () => ({ data: { "ses_timeout": { type: "idle" } } }),
         },
-        session: {
-          abort: async () => {},
-          messages: async () => ({ data: [] }),
-          status: async () => ({ data: {} }),
-        },
-      };
-
-      //#when
-      const result = await pollSyncSession(createMockCtx(), mockClient, {
-        sessionID: "ses_fail",
-        agentToUse: "test-agent",
-        toastManager: null,
-        taskId: undefined,
-      });
-
-      //#then - should return error string
-      expect(result).toContain("SSE subscription failed");
-      expect(result).toContain("Connection refused");
-    });
-  });
-
-  describe("stream ending unexpectedly", () => {
-    test("returns error when stream ends without idle event", async () => {
-      //#given - stream that ends without emitting idle
-      const { pollSyncSession } = require("./sync-session-poller");
-
-      async function* emptyStream(): AsyncGenerator<{
-        type: string;
-        properties: unknown;
-      }> {
-        yield {
-          type: "message.updated",
-          properties: { sessionID: "ses_empty" },
-        };
       }
 
-      const mockClient = {
-        event: { subscribe: async () => ({ stream: emptyStream() }) },
-        session: {
-          abort: async () => {},
-          messages: async () => ({ data: [] }),
-          status: async () => ({ data: {} }),
-        },
-      };
-
-      //#when
+      // when: calling pollSyncSession
       const result = await pollSyncSession(createMockCtx(), mockClient, {
-        sessionID: "ses_empty",
+        sessionID: "ses_timeout",
         agentToUse: "test-agent",
         toastManager: null,
         taskId: undefined,
-      });
+      }, 0)
 
-      //#then - should return error about unexpected stream end
-      expect(result).toContain("SSE stream ended unexpectedly");
-      expect(result).toContain("ses_empty");
-    });
-  });
+      // then: returns timeout error
+      expect(result).toBe("Poll timeout reached after 50ms for session ses_timeout")
+      expect(abortCount).toBe(1)
+    })
+  })
+
+  describe("non-idle session status", () => {
+    test("skips message check when session is not idle", async () => {
+      // given: session is running (not idle)
+      const { pollSyncSession } = require("./sync-session-poller")
+
+      let statusCallCount = 0
+      let messageCallCount = 0
+       const mockClient = {
+         session: {
+           messages: async () => {
+             messageCallCount++
+             return {
+               data: [
+                 { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
+                 {
+                   info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "end_turn" },
+                   parts: [{ type: "text", text: "Done" }],
+                 },
+               ],
+             }
+           },
+           status: async () => {
+             statusCallCount++
+             if (statusCallCount <= 2) {
+               return { data: { "ses_busy": { type: "running" } } }
+             }
+             return { data: { "ses_busy": { type: "idle" } } }
+           },
+         },
+       }
+
+      // when: calling pollSyncSession
+      const result = await pollSyncSession(createMockCtx(), mockClient, {
+        sessionID: "ses_busy",
+        agentToUse: "test-agent",
+        toastManager: null,
+        taskId: undefined,
+      })
+
+      // then: waits for idle before checking messages
+      expect(result).toBeNull()
+      expect(statusCallCount).toBeGreaterThanOrEqual(3)
+    })
+  })
 
   describe("isSessionComplete edge cases", () => {
     test("returns false when messages array is empty", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
-      const messages: any[] = [];
-      const result = isSessionComplete(messages);
-      expect(result).toBe(false);
-    });
+      const { isSessionComplete } = require("./sync-session-poller")
+
+      // given: empty messages array
+      const messages: any[] = []
+
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
+
+      // then: returns false
+      expect(result).toBe(false)
+    })
 
     test("returns false when no assistant message exists", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      const { isSessionComplete } = require("./sync-session-poller")
+
+      // given: only user messages, no assistant
       const messages = [
         { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
         { info: { id: "msg_002", role: "user", time: { created: 2000 } } },
-      ];
-      const result = isSessionComplete(messages);
-      expect(result).toBe(false);
-    });
+      ]
+
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
+
+      // then: returns false
+      expect(result).toBe(false)
+    })
 
     test("returns false when only assistant message exists (no user)", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      const { isSessionComplete } = require("./sync-session-poller")
+
+      // given: only assistant message, no user message
       const messages = [
         {
-          info: {
-            id: "msg_001",
-            role: "assistant",
-            time: { created: 1000 },
-            finish: "end_turn",
-          },
+          info: { id: "msg_001", role: "assistant", time: { created: 1000 }, finish: "end_turn" },
           parts: [{ type: "text", text: "Response" }],
         },
-      ];
-      const result = isSessionComplete(messages);
-      expect(result).toBe(false);
-    });
+      ]
 
-    test("returns true when assistant finished after user with terminal finish", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
+
+      // then: returns false (no user message to compare IDs)
+      expect(result).toBe(false)
+    })
+
+    test("returns false when assistant message has missing finish field", () => {
+      const { isSessionComplete } = require("./sync-session-poller")
+
+      // given: assistant message without finish field
       const messages = [
         { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
         {
-          info: {
-            id: "msg_002",
-            role: "assistant",
-            time: { created: 2000 },
-            finish: "stop",
-          },
-          parts: [{ type: "text", text: "Done" }],
+          info: { id: "msg_002", role: "assistant", time: { created: 2000 } },
+          parts: [{ type: "text", text: "Response" }],
         },
-      ];
-      const result = isSessionComplete(messages);
-      expect(result).toBe(true);
-    });
+      ]
 
-    test("returns false when assistant finish is tool-calls (non-terminal)", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
+
+      // then: returns false (missing finish)
+      expect(result).toBe(false)
+    })
+
+    test("returns false when assistant message has missing info.id field", () => {
+      const { isSessionComplete } = require("./sync-session-poller")
+
+      // given: assistant message without id in info
       const messages = [
         { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
         {
-          info: {
-            id: "msg_002",
-            role: "assistant",
-            time: { created: 2000 },
-            finish: "tool-calls",
+          info: { role: "assistant", time: { created: 2000 }, finish: "end_turn" },
+          parts: [{ type: "text", text: "Response" }],
         },
-        parts: [{ type: "tool-call" }],
-      },
-      ];
+      ]
 
-      //#when
-      const result = isSessionComplete(messages);
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
 
-      //#then - should return false (missing assistant id)
-      expect(result).toBe(false);
-    });
+      // then: returns false (missing assistant id)
+      expect(result).toBe(false)
+    })
 
     test("returns false when finish is stop but assistant has tool-call parts", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      const { isSessionComplete } = require("./sync-session-poller")
 
-      //#given - provider marks stop even though tool execution is still pending
+      // given: provider marks stop even though tool execution is pending
       const messages = [
         { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
         {
           info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "stop" },
           parts: [{ type: "tool-call", text: "calling tool" }],
         },
-      ];
+      ]
 
-      //#when
-      const result = isSessionComplete(messages);
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
 
-      //#then - should return false because tool execution is still pending
-      expect(result).toBe(false);
-    });
+      // then: returns false because tool execution is still pending
+      expect(result).toBe(false)
+    })
 
     test("returns false when finish is end_turn but assistant has tool-call parts", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      const { isSessionComplete } = require("./sync-session-poller")
 
-      //#given - assistant emitted a terminal finish but still contains pending tool calls
+      // given: assistant emitted terminal finish but contains pending tool calls
       const messages = [
         { info: { id: "msg_001", role: "user", time: { created: 1000 } } },
         {
           info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "end_turn" },
           parts: [{ type: "tool-call", text: "calling tool" }],
         },
-      ];
+      ]
 
-      //#when
-      const result = isSessionComplete(messages);
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
 
-      //#then - should return false because tool execution is still pending
-      expect(result).toBe(false);
-    });
+      // then: returns false because tool execution is still pending
+      expect(result).toBe(false)
+    })
 
     test("returns false when user message has missing info.id field", () => {
-      const { isSessionComplete } = require("./sync-session-poller");
+      const { isSessionComplete } = require("./sync-session-poller")
 
-      //#given - user message without id in info
+      // given: user message without id in info
       const messages = [
         { info: { role: "user", time: { created: 1000 } } },
         {
           info: { id: "msg_002", role: "assistant", time: { created: 2000 }, finish: "end_turn" },
           parts: [{ type: "text", text: "Response" }],
         },
-      ];
+      ]
 
-      //#when
-      const result = isSessionComplete(messages);
+      // when: calling isSessionComplete
+      const result = isSessionComplete(messages)
 
-      //#then - should return false (missing user id)
-      expect(result).toBe(false);
-    });
-  });
-});
+      // then: returns false (missing user id)
+      expect(result).toBe(false)
+    })
+  })
+
+})

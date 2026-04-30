@@ -31,7 +31,7 @@ describe("model-error-classifier", () => {
     //#given
     const error = {
       message:
-        "All credentials for model claude-opus-4-6-thinking are cooling down [retrying in ~5 days attempt #1]",
+        "All credentials for model claude-opus-4-7-thinking are cooling down [retrying in ~5 days attempt #1]",
     }
 
     //#when
@@ -230,6 +230,17 @@ describe("model-error-classifier", () => {
   test("treats HTTP 429 rate limit message as retryable", () => {
     //#given
     const error = { message: "429 Too Many Requests: rate limit reached" }
+
+    //#when
+    const result = shouldRetryError(error)
+
+    //#then
+    expect(result).toBe(true)
+  })
+
+  test("treats forbidden provider message as retryable", () => {
+    //#given
+    const error = { message: "Forbidden: Selected provider is forbidden" }
 
     //#when
     const result = shouldRetryError(error)

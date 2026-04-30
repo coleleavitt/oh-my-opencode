@@ -115,6 +115,27 @@ describe("executeSync", () => {
     expect(promptInput?.body.parts).toEqual([{ type: "text", text: "find something" }])
   })
 
+  test("removes invisible agent characters before sending the sync prompt", async () => {
+    //#given
+    const executeSync = await importExecuteSync()
+    const deps = createDependencies()
+    const toolContext = createToolContext()
+    const recorder = createPromptAsyncRecorder()
+    const args = {
+      subagent_type: "\u200BSisyphus\u200B - Ultraworker",
+      description: "test task",
+      prompt: "find something",
+      run_in_background: false,
+    }
+
+    //#when
+    await executeSync(args, toolContext, createContext(recorder.promptAsync) as never, deps)
+
+    //#then
+    const promptInput = recorder.getCapturedInput()
+    expect(promptInput?.body.agent).toBe("Sisyphus - Ultraworker")
+  })
+
   test("returns processed response with task metadata footer", async () => {
     //#given
     const executeSync = await importExecuteSync()
@@ -280,6 +301,27 @@ describe("executeSync", () => {
     expect(deps.processMessages).not.toHaveBeenCalled()
   })
 
+  test("strips invisible sort prefixes before sending sync prompts", async () => {
+    //#given
+    const executeSync = await importExecuteSync()
+    const deps = createDependencies()
+    const toolContext = createToolContext()
+    const recorder = createPromptAsyncRecorder()
+    const args = {
+      subagent_type: "\u200BSisyphus - Ultraworker",
+      description: "prefixed agent",
+      prompt: "find something",
+      run_in_background: false,
+    }
+
+    //#when
+    await executeSync(args, toolContext, createContext(recorder.promptAsync) as never, deps)
+
+    //#then
+    const promptInput = recorder.getCapturedInput()
+    expect(promptInput?.body.agent).toBe("Sisyphus - Ultraworker")
+  })
+
   test("returns generic prompt failure with task metadata", async () => {
     //#given
     const executeSync = await importExecuteSync()
@@ -352,6 +394,26 @@ describe("executeSync", () => {
     //#then
     expect(spawnReservation.commit).toHaveBeenCalledTimes(1)
     expect(spawnReservation.rollback).toHaveBeenCalledTimes(0)
+  })
+
+  test("strips legacy ZWSP-prefixed agent names from persisted sync prompt body (GH-3259)", async () => {
+    //#given - persisted sync invocation from v3.14.0-v3.16.0 with ZWSP prefix on subagent_type
+    const executeSync = await importExecuteSync()
+    const deps = createDependencies()
+    const toolContext = createToolContext()
+    const recorder = createPromptAsyncRecorder()
+    const args = {
+      subagent_type: "\u200B\u200BHephaestus - Deep Agent",
+      description: "legacy zwsp",
+      prompt: "find something",
+      run_in_background: false,
+    }
+
+    //#when
+    await executeSync(args, toolContext, createContext(recorder.promptAsync) as never, deps)
+
+    //#then
+    expect(recorder.getCapturedInput()?.body.agent).toBe("Hephaestus - Deep Agent")
   })
 })
 

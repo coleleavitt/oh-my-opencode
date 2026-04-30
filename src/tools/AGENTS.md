@@ -1,6 +1,6 @@
 # src/tools/ - 26 Tools Across 16 Directories
 
-**Generated:** 2026-04-05
+**Generated:** 2026-04-18
 
 ## OVERVIEW
 
@@ -23,7 +23,7 @@
 |------|---------|------------|
 | `task` | `createDelegateTask` | description, prompt, category, subagent_type, run_in_background, session_id, load_skills, command |
 
-**3 Built-in Categories**: visual-engineering, artistry, writing (use `model:` directly for cost tier; `subagent_type` for agent role)
+**8 Built-in Categories**: visual-engineering, ultrabrain, deep, artistry, quick, unspecified-low, unspecified-high, writing
 
 ### Agent Invocation (1)
 
@@ -92,10 +92,13 @@
 | Category | Model | Domain |
 |----------|-------|--------|
 | visual-engineering | gemini-3.1-pro high | Frontend, UI/UX |
+| ultrabrain | gpt-5.5 xhigh | Hard logic |
+| deep | gpt-5.5 medium | Autonomous problem-solving |
 | artistry | gemini-3.1-pro high | Creative approaches |
+| quick | gpt-5.4-mini | Trivial tasks |
+| unspecified-low | claude-sonnet-4-6 | Moderate effort |
+| unspecified-high | claude-opus-4-7 max | High effort |
 | writing | gemini-3-flash | Documentation |
-
-For arbitrary cost/quality tiers, set `model:` directly on the task call (e.g. `model: "anthropic/claude-haiku-4-5"`) — categories are reserved for genuine domain signal, not model-cost proxies.
 
 ## HOW TO ADD A TOOL
 

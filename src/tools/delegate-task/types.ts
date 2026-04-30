@@ -2,6 +2,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { BackgroundManager } from "../../features/background-agent"
 import type { CategoriesConfig, GitMasterConfig, BrowserAutomationProvider, AgentOverrides, SisyphusAgentConfig, TeammatesConfig } from "../../config/schema"
 import type { TeammateRegistry } from "../../features/teammates"
+import type { ModelFallbackControllerAccessor } from "../../hooks/model-fallback"
 import type {
   AvailableCategory,
   AvailableSkill,
@@ -14,32 +15,11 @@ export interface DelegateTaskArgs {
   prompt: string
   category?: string
   subagent_type?: string
+  requested_subagent_type?: string
   run_in_background: boolean
-  /**
-   * Run the delegated task inside a throwaway `git worktree`-backed branch
-   * so mutations can't touch the parent's working copy. Sync-only in v1.
-   * If the task produces no changes, the worktree is auto-removed; if it
-   * produces changes (commits or dirty tree), the path + branch are
-   * surfaced to the parent in the tool result.
-   */
-  run_in_worktree?: boolean
-  /**
-   * Register the spawned agent session as a named teammate so the parent
-   * can continue messaging it across turns via send_message_to_teammate.
-   * Requires teammate_name. Teammates are scoped to the parent session
-   * and cleared when the parent session ends. See
-   * src/features/teammates/DESIGN.md.
-   */
-  teammate?: boolean
-  /** Stable name for the teammate (required if teammate=true). */
-  teammate_name?: string
-  session_id?: string
+  task_id?: string
   command?: string
   load_skills: string[]
-  execute?: {
-    task_id: string
-    task_dir?: string
-  }
 }
 
 export interface ToolContextWithMetadata {
@@ -87,13 +67,9 @@ export interface DelegateTaskToolOptions {
   availableSkills?: AvailableSkill[]
   agentOverrides?: AgentOverrides
   sisyphusAgentConfig?: SisyphusAgentConfig
+  modelFallbackControllerAccessor?: ModelFallbackControllerAccessor
   onSyncSessionCreated?: (event: SyncSessionCreatedEvent) => Promise<void>
   syncPollTimeoutMs?: number
-  /** Teammate registry (singleton from createManagers). When absent,
-   * teammate-related args on delegate-task are silently ignored. */
-  teammateRegistry?: TeammateRegistry
-  /** Teammates config (from pluginConfig.teammates). Defaults when absent: enabled=true, max=5. */
-  teammatesConfig?: TeammatesConfig
 }
 
 import type { DelegatedModelConfig } from "../../shared/model-resolution-types"

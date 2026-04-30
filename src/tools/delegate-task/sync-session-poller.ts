@@ -1,44 +1,68 @@
-import type { ToolContextWithMetadata, OpencodeClient } from "./types";
-import type { SessionMessage } from "./executor-types";
-import { getDefaultSyncPollTimeoutMs, getTimingConfig } from "./timing";
-import { log } from "../../shared/logger";
-import { normalizeSDKResponse } from "../../shared";
+import type { ToolContextWithMetadata, OpencodeClient } from "./types"
+import type { SessionMessage } from "./executor-types"
+import { getDefaultSyncPollTimeoutMs, getTimingConfig } from "./timing"
+import { log } from "../../shared/logger"
+import { normalizeSDKResponse } from "../../shared"
+import { extractErrorMessage } from "../../features/background-agent/error-classifier"
 
-const NON_TERMINAL_FINISH_REASONS = new Set(["tool-calls", "unknown"]);
-const PENDING_TOOL_PART_TYPES = new Set(["tool", "tool_use", "tool-call"]);
+const NON_TERMINAL_FINISH_REASONS = new Set(["tool-calls", "unknown"])
+const PENDING_TOOL_PART_TYPES = new Set(["tool", "tool_use", "tool-call"])
 
 function wait(milliseconds: number): Promise<void> {
-  const sharedBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
-  const typedArray = new Int32Array(sharedBuffer);
-  const result = Atomics.waitAsync(typedArray, 0, 0, milliseconds);
-  return result.async ? result.value.then(() => undefined) : Promise.resolve();
+  const sharedBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT)
+  const typedArray = new Int32Array(sharedBuffer)
+  const result = Atomics.waitAsync(typedArray, 0, 0, milliseconds)
+  return result.async ? result.value.then(() => undefined) : Promise.resolve()
 }
 
 function abortSyncSession(client: OpencodeClient, sessionID: string, reason: string): void {
-  log("[task] Aborting sync session", { sessionID, reason });
+  log("[task] Aborting sync session", { sessionID, reason })
   void client.session.abort({
     path: { id: sessionID },
   }).catch((error: unknown) => {
-    log("[task] Failed to abort sync session", { sessionID, reason, error: String(error) });
-  });
+    log("[task] Failed to abort sync session", { sessionID, reason, error: String(error) })
+  })
+}
+
+async function fetchSessionMessages(
+  client: OpencodeClient,
+  sessionID: string
+): Promise<SessionMessage[]> {
+  const messagesResult = await client.session.messages({ path: { id: sessionID } })
+  const rawData = (messagesResult as { data?: unknown })?.data ?? messagesResult
+  return Array.isArray(rawData) ? (rawData as SessionMessage[]) : []
+}
+
+function getTerminalSessionError(messages: SessionMessage[]): string | null {
+  const lastAssistant = [...messages].reverse().find((msg) => msg.info?.role === "assistant")
+  const lastUser = [...messages].reverse().find((msg) => msg.info?.role === "user")
+  if (lastUser?.info?.id && lastAssistant?.info?.id && lastAssistant.info.id <= lastUser.info.id) {
+    return null
+  }
+  if (!lastAssistant?.info || !("error" in lastAssistant.info)) {
+    return null
+  }
+
+  const errorMessage = extractErrorMessage((lastAssistant.info as { error?: unknown }).error)
+  return errorMessage && errorMessage.length > 0 ? errorMessage : "Session error"
 }
 
 export function isSessionComplete(messages: SessionMessage[]): boolean {
-  let lastUser: SessionMessage | undefined;
-  let lastAssistant: SessionMessage | undefined;
+  let lastUser: SessionMessage | undefined
+  let lastAssistant: SessionMessage | undefined
 
   for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (!lastAssistant && msg.info?.role === "assistant") lastAssistant = msg;
-    if (!lastUser && msg.info?.role === "user") lastUser = msg;
-    if (lastUser && lastAssistant) break;
+    const msg = messages[i]
+    if (!lastAssistant && msg.info?.role === "assistant") lastAssistant = msg
+    if (!lastUser && msg.info?.role === "user") lastUser = msg
+    if (lastUser && lastAssistant) break
   }
 
-  if (!lastAssistant?.info?.finish) return false;
-  if (NON_TERMINAL_FINISH_REASONS.has(lastAssistant.info.finish)) return false;
-  if (lastAssistant.parts?.some((part) => part.type && PENDING_TOOL_PART_TYPES.has(part.type))) return false;
-  if (!lastUser?.info?.id || !lastAssistant?.info?.id) return false;
-  return lastUser.info.id < lastAssistant.info.id;
+  if (!lastAssistant?.info?.finish) return false
+  if (NON_TERMINAL_FINISH_REASONS.has(lastAssistant.info.finish)) return false
+  if (lastAssistant.parts?.some((part) => part.type && PENDING_TOOL_PART_TYPES.has(part.type))) return false
+  if (!lastUser?.info?.id || !lastAssistant?.info?.id) return false
+  return lastUser.info.id < lastAssistant.info.id
 }
 
 const DEFAULT_MAX_ASSISTANT_TURNS = 300
@@ -54,7 +78,7 @@ export async function pollSyncSession(
     anchorMessageCount?: number
     maxAssistantTurns?: number
   },
-  timeoutMs?: number,
+  timeoutMs?: number
 ): Promise<string | null> {
   const syncTiming = getTimingConfig()
   const maxPollTimeMs = Math.max(timeoutMs ?? getDefaultSyncPollTimeoutMs(), 50)
@@ -67,18 +91,27 @@ export async function pollSyncSession(
 
   log("[task] Starting poll loop", { sessionID: input.sessionID, agentToUse: input.agentToUse, maxTurns })
 
-  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-  while (!timedOut) {
+  while (Date.now() - pollStart < maxPollTimeMs) {
     if (ctx.abort?.aborted) {
-      log("[task] Sync session aborted by context", { sessionID: input.sessionID })
-      return null
-    }
+      try {
+        const messages = await fetchSessionMessages(client, input.sessionID)
+        const hasNewMessages =
+          input.anchorMessageCount === undefined || messages.length > input.anchorMessageCount
+        if (hasNewMessages && isSessionComplete(messages)) {
+          log("[task] Abort detected after session already completed", { sessionID: input.sessionID })
+          return null
+        }
+      } catch (error) {
+        log("[task] Final messages fetch failed after abort, continuing with abort", {
+          sessionID: input.sessionID,
+          error: String(error),
+        })
+      }
 
-    if (Date.now() - pollStart >= maxPollTimeMs) {
-      timedOut = true
-      log("[task] Poll timed out", { sessionID: input.sessionID, pollCount, maxPollTimeMs })
-      break
+      log("[task] Aborted by user", { sessionID: input.sessionID })
+      abortSyncSession(client, input.sessionID, "parent_abort")
+      if (input.toastManager && input.taskId) input.toastManager.removeTask(input.taskId)
+      return `Task aborted.\n\nSession ID: ${input.sessionID}`
     }
 
     await wait(syncTiming.POLL_INTERVAL_MS)
@@ -107,26 +140,31 @@ export async function pollSyncSession(
       continue
     }
 
-    let messagesResult: { data?: unknown } | SessionMessage[]
+    let messages: SessionMessage[]
     try {
-      messagesResult = await client.session.messages({ path: { id: input.sessionID } })
+      messages = await fetchSessionMessages(client, input.sessionID)
     } catch (error) {
       log("[task] Poll messages fetch failed, retrying", { sessionID: input.sessionID, error: String(error) })
       continue
     }
-    const rawData = (messagesResult as { data?: unknown })?.data ?? messagesResult
-    const msgs = Array.isArray(rawData) ? (rawData as SessionMessage[]) : []
 
-    if (input.anchorMessageCount !== undefined && msgs.length <= input.anchorMessageCount) {
+    if (input.anchorMessageCount !== undefined && messages.length <= input.anchorMessageCount) {
       continue
     }
 
-    if (isSessionComplete(msgs)) {
+    const sessionError = getTerminalSessionError(messages)
+    if (sessionError) {
+      log("[task] Poll detected terminal session error", { sessionID: input.sessionID, sessionError })
+      return sessionError
+    }
+
+    if (isSessionComplete(messages)) {
       log("[task] Poll complete - terminal finish detected", { sessionID: input.sessionID, pollCount })
       break
     }
 
-    const lastAssistant = [...msgs].reverse().find((m) => m.info?.role === "assistant")
+    // Count new assistant turns to circuit-break infinite loops
+    const lastAssistant = [...messages].reverse().find((m) => m.info?.role === "assistant")
     if (lastAssistant?.info?.id && lastAssistant.info.id !== lastSeenAssistantId) {
       lastSeenAssistantId = lastAssistant.info.id
       assistantTurnCount++
@@ -136,13 +174,13 @@ export async function pollSyncSession(
           assistantTurnCount,
           maxTurns,
         })
-        await client.session.abort({ path: { id: input.sessionID } }).catch(() => {})
+        abortSyncSession(client, input.sessionID, "max_turns_exceeded")
         if (input.toastManager && input.taskId) input.toastManager.removeTask(input.taskId)
         return `Task aborted: subagent exceeded ${maxTurns} assistant turns without completing. This usually indicates an infinite tool-call loop. Session ID: ${input.sessionID}`
       }
     }
 
-    const hasAssistantText = msgs.some((m) => {
+    const hasAssistantText = messages.some((m) => {
       if (m.info?.role !== "assistant") return false
       const parts = m.parts ?? []
       return parts.some((p) => {
@@ -161,9 +199,11 @@ export async function pollSyncSession(
     }
   }
 
-  if (input.toastManager && input.taskId) {
-    input.toastManager.removeTask(input.taskId)
+  if (Date.now() - pollStart >= maxPollTimeMs) {
+    timedOut = true
+    log("[task] Poll timeout reached", { sessionID: input.sessionID, pollCount })
+    abortSyncSession(client, input.sessionID, "poll_timeout")
   }
 
-  return null
+  return timedOut ? `Poll timeout reached after ${maxPollTimeMs}ms for session ${input.sessionID}` : null
 }

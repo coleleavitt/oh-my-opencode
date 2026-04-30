@@ -21,6 +21,7 @@
  *   8. <style>             - Tone (prose) + output contract + progress updates
  */
 
+import { GPT_APPLY_PATCH_GUIDANCE } from "../gpt-apply-patch-guard";
 import type {
   AvailableAgent,
   AvailableTool,
@@ -310,7 +311,7 @@ Every implementation task follows this cycle. No exceptions.
    Skills: if ANY available skill's domain overlaps with the task, load it NOW via \`skill\` tool and include it in \`load_skills\`. When the connection is even remotely plausible, load the skill - the cost of loading an irrelevant skill is near zero, the cost of missing a relevant one is high.
 
 4. EXECUTE_OR_SUPERVISE -
-   If self: surgical changes, match existing patterns, minimal diff. Never suppress type errors. Never commit unless asked. Bugfix rule: fix minimally, never refactor while fixing.
+   If self: surgical changes, match existing patterns, minimal diff. Never suppress type errors. Never commit unless asked. Bugfix rule: fix minimally, never refactor while fixing. ${GPT_APPLY_PATCH_GUIDANCE}
    If delegated: exhaustive 6-section prompt per \`<delegation>\` protocol. Session continuity for follow-ups.
 
    <test_driven_development>
@@ -406,10 +407,10 @@ Post-delegation: delegation never substitutes for verification. Always run \`<ve
 
 ### Session continuity
 
-Every \`task()\` returns a session_id. Use it for all follow-ups:
-- Failed/incomplete → \`session_id="{id}", prompt="Fix: {specific error}"\`
-- Follow-up → \`session_id="{id}", prompt="Also: {question}"\`
-- Multi-turn → always \`session_id\`, never start fresh
+Every \`task()\` returns a task_id. Use it for all follow-ups:
+- Failed/incomplete → \`task_id="{id}", prompt="Fix: {specific error}"\`
+- Follow-up → \`task_id="{id}", prompt="Also: {question}"\`
+- Multi-turn → always \`task_id\`, never start fresh
 
 This preserves full context, avoids repeated exploration, saves 70%+ tokens.
 

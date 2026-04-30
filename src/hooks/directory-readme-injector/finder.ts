@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import picomatch from "picomatch";
+import { access } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { README_FILENAME } from "./constants";
 
@@ -10,23 +9,19 @@ export function resolveFilePath(rootDirectory: string, path: string): string | n
   return resolve(rootDirectory, path);
 }
 
-export function findReadmeMdUp(input: {
+export async function findReadmeMdUp(input: {
   startDir: string;
   rootDir: string;
-  mdExcludes?: readonly string[];
-}): string[] {
+}): Promise<string[]> {
   const found: string[] = [];
-  const isExcluded = input.mdExcludes?.length
-    ? picomatch(input.mdExcludes as string[], { dot: true, bash: true })
-    : null;
   let current = input.startDir;
 
   while (true) {
     const readmePath = join(current, README_FILENAME);
-    if (existsSync(readmePath)) {
-      if (!isExcluded || !isExcluded(relative(input.rootDir, readmePath))) {
-        found.push(readmePath);
-      }
+    try {
+      await access(readmePath);
+      found.push(readmePath);
+    } catch {
     }
 
     if (current === input.rootDir) break;
