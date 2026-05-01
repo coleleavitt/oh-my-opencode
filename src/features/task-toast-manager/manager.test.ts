@@ -421,76 +421,42 @@ describe("TaskToastManager", () => {
     })
   })
 
-  describe("running-duration tick (fix for stuck-at-zero timer)", () => {
-    // Uses bun:test's fake timers indirectly — we advance via setTimeout/
-    // await. The tick interval is 5000ms; we assert on re-emissions after
-    // forcing the interval to fire. Rather than stubbing Date.now() (which
-    // requires global patching across tests) we verify the re-emission
-    // happens and that its payload shape still matches the task-list
-    // format with a live duration computation.
-
-    test("re-emits the task-list toast on the periodic tick while a task runs", async () => {
-      const task = {
-        id: "tick_1",
-        sessionID: "ses_tick_1",
+  describe("event-driven model (no polling tick)", () => {
+    test("does NOT re-emit toast after initial addTask (no tick timer)", async () => {
+      toastManager.addTask({
+        id: "evt_1",
+        sessionID: "ses_evt_1",
         description: "Long-running work",
         agent: "sisyphus-junior",
         isBackground: true,
-      }
-      toastManager.addTask(task)
+      })
       const initialEmissions = mockClient.tui.showToast.mock.calls.length
       expect(initialEmissions).toBeGreaterThan(0)
 
-      // Wait 1.1x the tick interval — one re-emission should have fired.
-      await new Promise((r) => setTimeout(r, 5500))
+      await new Promise((r) => setTimeout(r, 6000))
 
-      const afterTick = mockClient.tui.showToast.mock.calls.length
-      expect(afterTick).toBeGreaterThan(initialEmissions)
-      const lastCall = mockClient.tui.showToast.mock.calls[afterTick - 1][0]
-      expect(lastCall.body.message).toContain("Long-running work")
-      // Duration reports actual wall-clock seconds, so it should be ≥ 5s
-      // on the re-emission (initial emit at 0s, tick fires at ~5s).
-      expect(lastCall.body.message).toMatch(/- \d+s/)
+      expect(mockClient.tui.showToast.mock.calls.length).toBe(initialEmissions)
     }, 10_000)
 
-    test("stops ticking once the last running task is removed", async () => {
+    test("removeTask does not trigger additional toasts", () => {
       toastManager.addTask({
-        id: "tick_2",
-        sessionID: "ses_tick_2",
+        id: "evt_2",
+        sessionID: "ses_evt_2",
         description: "Will finish",
         agent: "sisyphus-junior",
         isBackground: true,
       })
       mockClient.tui.showToast.mockClear()
 
-      toastManager.removeTask("tick_2")
+      toastManager.removeTask("evt_2")
 
-      // Wait well past one tick interval — no further toast emissions
-      // should happen because there are no running tasks.
-      await new Promise((r) => setTimeout(r, 5500))
       expect(mockClient.tui.showToast.mock.calls.length).toBe(0)
-    }, 10_000)
+    })
 
-    test("stops ticking when the only running task transitions to completed via updateTask", async () => {
+    test("dispose clears all tasks", () => {
       toastManager.addTask({
-        id: "tick_3",
-        sessionID: "ses_tick_3",
-        description: "Will finish via status",
-        agent: "sisyphus-junior",
-        isBackground: true,
-      })
-      mockClient.tui.showToast.mockClear()
-
-      toastManager.updateTask("tick_3", "completed")
-
-      await new Promise((r) => setTimeout(r, 5500))
-      expect(mockClient.tui.showToast.mock.calls.length).toBe(0)
-    }, 10_000)
-
-    test("dispose() clears the tick timer immediately", async () => {
-      toastManager.addTask({
-        id: "tick_4",
-        sessionID: "ses_tick_4",
+        id: "evt_3",
+        sessionID: "ses_evt_3",
         description: "Dispose test",
         agent: "sisyphus-junior",
         isBackground: true,
@@ -499,8 +465,8 @@ describe("TaskToastManager", () => {
 
       toastManager.dispose()
 
-      await new Promise((r) => setTimeout(r, 5500))
+      expect(toastManager.getRunningTasks()).toHaveLength(0)
       expect(mockClient.tui.showToast.mock.calls.length).toBe(0)
-    }, 10_000)
+    })
   })
 })

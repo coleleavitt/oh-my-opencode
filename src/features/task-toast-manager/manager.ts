@@ -14,21 +14,6 @@ export class TaskToastManager {
   private tasks: Map<string, TrackedTask> = new Map()
   private client: OpencodeClient
   private concurrencyManager?: ConcurrencyManager
-  /**
-   * Periodic tick that re-emits the task-list toast so the visible
-   * duration string tracks wall-clock time. Without this, the toast
-   * was computed once at task-add and the TUI rendered a stuck "0s".
-   *
-   * OpenCode's TUI toast component has no built-in tick (see
-   * packages/opencode/src/cli/cmd/tui/ui/toast.tsx — a one-shot
-   * auto-dismissing overlay) and opentui's react bindings don't
-   * ship a useInterval hook, so the canonical pattern is to
-   * re-emit the toast from the producer side. 5s cadence balances
-   * latency visible in the running-time display against how often
-   * the toast flashes in the operator's view.
-   */
-  private tickTimer: ReturnType<typeof setInterval> | undefined
-  private static readonly TICK_INTERVAL_MS = 5000
 
   constructor(client: OpencodeClient, concurrencyManager?: ConcurrencyManager) {
     this.client = client
@@ -39,42 +24,7 @@ export class TaskToastManager {
     this.concurrencyManager = manager
   }
 
-  /**
-   * Start the re-emission tick if not already running. Idempotent —
-   * safe to call from every addTask.
-   */
-  private startTick(): void {
-    if (this.tickTimer !== undefined) return
-    this.tickTimer = setInterval(() => {
-      const running = this.getRunningTasks()
-      if (running.length === 0) {
-        this.stopTick()
-        return
-      }
-      // Re-emit against the most-recently-started running task so the
-      // "NEW" arrow in the task list stays attached to the most
-      // recently dispatched piece of work — matches the invariant of
-      // showTaskListToast(newTask) when it's first called from addTask.
-      this.showTaskListToast(running[0], true)
-    }, TaskToastManager.TICK_INTERVAL_MS)
-    // Don't keep the process alive just for this tick — if nothing
-    // else has work to do we should exit promptly on host shutdown.
-    this.tickTimer.unref?.()
-  }
-
-  private stopTick(): void {
-    if (this.tickTimer === undefined) return
-    clearInterval(this.tickTimer)
-    this.tickTimer = undefined
-  }
-
-  /**
-   * Stop the tick timer. Called on plugin dispose so we don't leak
-   * intervals across hot-reloads in dev or in long-lived OpenCode
-   * hosts that re-init the plugin.
-   */
   dispose(): void {
-    this.stopTick()
     this.tasks.clear()
   }
 
@@ -104,9 +54,6 @@ export class TaskToastManager {
 
     this.tasks.set(task.id, trackedTask)
     this.showTaskListToast(trackedTask)
-    // Kick the periodic tick so the duration string in the toast
-    // keeps updating while this task runs. Idempotent.
-    this.startTick()
   }
 
   /**
@@ -117,9 +64,6 @@ export class TaskToastManager {
     if (task) {
       task.status = status
     }
-    // Status change may remove the last running task — check and
-    // stop the tick if nothing's left to display.
-    if (this.getRunningTasks().length === 0) this.stopTick()
   }
 
   /**
@@ -139,7 +83,6 @@ export class TaskToastManager {
    */
   removeTask(id: string): void {
     this.tasks.delete(id)
-    if (this.getRunningTasks().length === 0) this.stopTick()
   }
 
   /**
@@ -243,7 +186,7 @@ export class TaskToastManager {
   /**
    * Show consolidated toast with all running/queued tasks
    */
-  private showTaskListToast(newTask: TrackedTask, isTickUpdate = false): void {
+  private showTaskListToast(newTask: TrackedTask): void {
     const tuiClient = this.client as ClientWithTui
     if (!tuiClient.tui?.showToast) return
 
@@ -251,14 +194,9 @@ export class TaskToastManager {
     const running = this.getRunningTasks()
     const queued = this.getQueuedTasks()
 
-    let title: string
-    if (isTickUpdate) {
-      title = `Tasks Running (${running.length})`
-    } else {
-      title = newTask.isBackground
-        ? `New Background Task`
-        : `New Task Executed`
-    }
+    const title = newTask.isBackground
+      ? `New Background Task`
+      : `New Task Executed`
 
     tuiClient.tui.showToast({
       body: {
