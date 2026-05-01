@@ -27,3 +27,39 @@ export interface TaskToastOptions {
   variant: "info" | "success" | "warning" | "error"
   duration?: number
 }
+
+export interface TaskStartedEvent {
+  task_id: string
+  description: string
+  agent_name: string
+  is_background: boolean
+  parent_session_id: string
+}
+
+export interface TaskCompletedEvent {
+  task_id: string
+  description: string
+  agent_name: string
+  status: "completed" | "failed" | "killed"
+  duration_ms?: number
+  error?: string
+}
+
+export interface TaskProgressEvent {
+  task_id: string
+  description: string
+  last_tool_name?: string
+  summary?: string
+  elapsed_ms: number
+}
+
+export interface TaskUpdatedEvent {
+  task_id: string
+  patch: {
+    status?: "running" | "completed" | "failed" | "killed"
+    description?: string
+    end_time?: number
+    error?: string
+    is_backgrounded?: boolean
+  }
+}
