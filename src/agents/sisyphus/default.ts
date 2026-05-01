@@ -22,39 +22,6 @@ import {
   buildParallelDelegationSection,
   buildNonClaudePlannerSection,
   buildAntiDuplicationSection,
-  buildActionsWithCareSection,
-  buildNoGoldPlatingSection,
-  buildSecurityCodingSection,
-  buildSecurityTestingSection,
-  buildContextAwarenessSection,
-  buildPromptInjectionAwarenessSection,
-  buildMalwareAnalysisSection,
-  buildCompositeActionsSection,
-  buildWrittenFileExecutionSection,
-  buildSubAgentHandoffSection,
-  buildLookThroughWrappersSection,
-  buildCommittingCodeSection,
-  buildDelayedEffectsSection,
-  buildAuthorizedPentestSection,
-  buildRefusalProofLanguageSection,
-  buildToolResultPreservationSection,
-  buildCommentQualitySection,
-  buildAiSlopAwarenessSection,
-  buildMemoryGuidanceSection,
-  buildScopeEscalationSection,
-  buildVerifiedVsAssumedSection,
-  buildAmbiguousScopeSection,
-  buildPreExistingIssuesSection,
-  buildRefactoringDecisionSection,
-  buildHooksGuidanceSection,
-  buildLengthAnchorsSection,
-  buildCompleteTaskFullySection,
-  buildQuestionsAreNotConsentSection,
-  buildBoundariesStayInForceSection,
-  buildSilenceIsNotConsentSection,
-  buildSharedInfraBiasSection,
-  buildPreemptiveBlockSection,
-  buildUnseenToolResultsSection,
   categorizeTools,
 } from "../dynamic-agent-prompt-builder";
 
@@ -192,43 +159,7 @@ export function buildDefaultSisyphusPrompt(
   const oracleSection = buildOracleSection(availableAgents);
   const hardBlocks = buildHardBlocksSection();
   const antiPatterns = buildAntiPatternsSection();
-  const actionsWithCare = buildActionsWithCareSection();
-  const noGoldPlating = buildNoGoldPlatingSection();
-  const securityCoding = buildSecurityCodingSection();
-  const securityTesting = buildSecurityTestingSection();
-  const promptInjectionAwareness = buildPromptInjectionAwarenessSection();
-  const malwareAnalysis = buildMalwareAnalysisSection();
-  const compositeActions = buildCompositeActionsSection();
-  const writtenFileExecution = buildWrittenFileExecutionSection();
-  const subAgentHandoff = buildSubAgentHandoffSection();
-  const lookThroughWrappers = buildLookThroughWrappersSection();
-  const committingCode = buildCommittingCodeSection();
-  const delayedEffects = buildDelayedEffectsSection();
-  const authorizedPentest = buildAuthorizedPentestSection();
-  const refusalProofLanguage = buildRefusalProofLanguageSection();
-  const contextAwareness = buildContextAwarenessSection();
-  const toolResultPreservation = buildToolResultPreservationSection();
-  const commentQuality = buildCommentQualitySection();
-  const aiSlopAwareness = buildAiSlopAwarenessSection();
-  const memoryGuidance = buildMemoryGuidanceSection();
-  const scopeEscalation = buildScopeEscalationSection();
-  const verifiedVsAssumed = buildVerifiedVsAssumedSection();
-  const ambiguousScope = buildAmbiguousScopeSection();
-  const preExistingIssues = buildPreExistingIssuesSection();
-  const refactoringDecision = buildRefactoringDecisionSection();
-  const hooksGuidance = buildHooksGuidanceSection();
-  const lengthAnchors = buildLengthAnchorsSection();
-  const completeTaskFully = buildCompleteTaskFullySection();
-  const questionsAreNotConsent = buildQuestionsAreNotConsentSection();
-  const boundariesStayInForce = buildBoundariesStayInForceSection();
-  const silenceIsNotConsent = buildSilenceIsNotConsentSection();
-  const sharedInfraBias = buildSharedInfraBiasSection();
-  const preemptiveBlock = buildPreemptiveBlockSection();
-  const unseenToolResults = buildUnseenToolResultsSection();
-  const parallelDelegationSection = buildParallelDelegationSection(
-    model,
-    availableCategories,
-  );
+  const parallelDelegationSection = buildParallelDelegationSection(model, availableCategories);
   const nonClaudePlannerSection = buildNonClaudePlannerSection(model);
   const taskManagementSection = buildTaskManagementSection(useTaskSystem);
   const todoHookNote = useTaskSystem
@@ -298,13 +229,6 @@ This verbalization anchors your routing decision and makes your reasoning transp
 - Missing critical info (file, error, context) → **MUST ask**
 - User's design seems flawed or suboptimal → **MUST raise concern** before implementing
 
-**When you MUST ask, use this exact format:**
-> "Should I apply this to: (A) [option], (B) [option], or (C) [option]?"
-
-Give 2-3 concrete options. Never ask open-ended "what should I do?" — that shifts the design burden back to the user. If you can't think of 2 concrete options, the scope is probably clear enough to proceed with one — say which one you're picking and why.
-
-If the user doesn't respond within their next turn, pick the smallest-scope option and state the assumption explicitly.
-
 ### Step 3: Validate Before Acting
 
 **Assumptions Check:**
@@ -313,11 +237,11 @@ If the user doesn't respond within their next turn, pick the smallest-scope opti
 
 **Delegation Check (MANDATORY before acting directly):**
 1. Is there a specialized agent that perfectly matches this request?
-2. If not, which \`task\` category best describes this task? (visual-engineering, artistry, writing) — or use \`subagent_type\` (general, oracle, explore) and set \`model\` directly for cost tier. What skills are available to equip the agent with?
-   - MUST pass skills as task parameter: \`task(load_skills=[{skill1}, ...])\`
-3. Only execute directly if the work is trivial AND no category/agent fits — and state your reason.
+2. If not, is there a \`task\` category best describes this task? (visual-engineering, ultrabrain, quick etc.) What skills are available to equip the agent with?
+   - MUST FIND skills to use, for: \`task(load_skills=[{skill1}, ...])\` MUST PASS SKILL AS TASK PARAMETER.
+3. Can I do it myself for the best result, FOR SURE? REALLY, REALLY, THERE IS NO APPROPRIATE CATEGORIES TO WORK WITH?
 
-**Default Bias: DELEGATE.** Execute directly only when the operation is one-shot, < 30 seconds of work, and has no parallelizable components.
+**Default Bias: DELEGATE. WORK YOURSELF ONLY WHEN IT IS SUPER SIMPLE.**
 
 ### When to Challenge the User
 If you observe:
@@ -366,17 +290,15 @@ ${exploreSection}
 
 ${librarianSection}
 
-### Parallel Execution (DEFAULT behavior — respect the limits)
+### Parallel Execution (DEFAULT behavior)
 
-**Parallelize EVERYTHING independent. Constraints:**
+**Parallelize EVERYTHING. Independent reads, searches, and agents run SIMULTANEOUSLY.**
 
 <tool_usage_rules>
-- Parallelize independent tool calls: multiple file reads, grep searches, agent fires — all at once
+- Parallelize independent tool calls: multiple file reads, grep searches, agent fires - all at once
 - Explore/Librarian = background grep. ALWAYS \`run_in_background=true\`, ALWAYS parallel
-- Fire 2-5 explore/librarian agents in parallel for any non-trivial codebase question (MAX 5 per wave)
-- Parallelize independent file reads — don't read files one at a time (MAX 10 files per batch)
-- Max concurrent background tasks: 5. If more are needed, queue and wait for completion before spawning the next wave.
-- For IMPLEMENTATION tasks: \`run_in_background=false\` always (the parallelism rule applies to exploration/consultation, not execution)
+- Fire 2-5 explore/librarian agents in parallel for any non-trivial codebase question
+- Parallelize independent file reads - don't read files one at a time
 - After any write/edit tool call, briefly restate what changed, where, and what validation follows
 - Prefer tools over internal knowledge whenever you need specific data (files, configs, patterns)
 </tool_usage_rules>
@@ -483,7 +405,7 @@ Every \`task()\` output includes a task_id. **USE IT.**
 
 \`\`\`typescript
 // WRONG: Starting fresh loses all context
-task(subagent_type="general", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
+task(category="quick", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix the type error in auth.ts...")
 
 // CORRECT: Resume preserves everything
 task(task_id="ses_abc123", load_skills=[], run_in_background=false, description="Fix type error", prompt="Fix: Type error on line 42")
@@ -539,14 +461,12 @@ If project has build/test commands, run them at task completion.
 
 ### Evidence Requirements (task NOT complete without these):
 
-These are **critical evidence**. If you can't produce them, the task is NOT complete — surface the blocker, don't claim done.
+- **File edit** → \`lsp_diagnostics\` clean on changed files
+- **Build command** → Exit code 0
+- **Test run** → Pass (or explicit note of pre-existing failures)
+- **Delegation** → Agent result received and verified
 
-- **File edit** → \`lsp_diagnostics\` clean on changed files (0 errors, warnings acceptable)
-- **Build command** → Exit code 0 (warnings acceptable, errors are a blocker)
-- **Test run** → All tests pass (or explicit note of pre-existing failures with file:line)
-- **Delegation** → Agent result received and verified (not just "the agent said it's done")
-
-**NO EVIDENCE = NOT COMPLETE.** Do not claim "verified" without running the check. If you're guessing based on pattern-matching, label it as an assumption — see the Verified vs Assumed rule in Constraints for the critical/non-critical distinction.
+**NO EVIDENCE = NOT COMPLETE.**
 
 ---
 
@@ -583,24 +503,17 @@ A task is complete when:
 
 After implementation is done but BEFORE reporting completion, run the implement→review→fix loop:
 
-1. **Delegate review**: \`task(subagent_type="code-reviewer", run_in_background=false, load_skills=["argus-review"], description="Review changes", prompt="Review all uncommitted changes for P-1 through P-4 issues using the 5-axis rubric (Impact × Trigger × Blast Radius × Fix Effort × Confidence). Focus on bugs introduced by recent edits.")\` (\`argus\` is available as an alias for the same agent.)
-   - **Available review skills** (pass one in \`load_skills\` to tune the pass):
-     - \`argus-review\` — default uncommitted-diff bug pass (use this when unsure)
-     - \`argus-pr\` — branch-vs-base PR review with APPROVE/REQUEST CHANGES/NEEDS DISCUSSION verdict
-     - \`argus-commit\` — single-commit review with commit-quality pre-check (takes \`<commit-hash>\`, defaults to HEAD)
-     - \`argus-security\` — security-focused audit (auto-promotes security findings to P-1, HIGH confidence only)
-     - \`argus-custom\` — user-supplied review instructions (takes \`<custom review instructions>\`)
-     - \`argus-plan\` — read-only planning/analysis mode (NOT a bug review — use for "how would I approach X?")
-2. **Fix ALL P-1 (blocker), P-2 (high), and P-3 (medium) findings.** P-4 (low) — fix if quick, otherwise note and skip.
-3. **Re-review** after fixes — delegate to code-reviewer again (same \`load_skills\`) to confirm fixes are clean.
-4. **Repeat** until zero P-1, P-2, and P-3 findings.
+1. **Delegate review**: \`task(subagent_type="cubic-reviewer", run_in_background=false, load_skills=[], description="Review changes", prompt="Review all uncommitted changes for P0-P3 issues. Focus on bugs introduced by recent edits.")\`
+2. **Fix ALL P0 (critical), P1 (high), and P2 (medium) findings.** P3 (low) — fix if quick, otherwise note and skip.
+3. **Re-review** after fixes — delegate to cubic-reviewer again to confirm fixes are clean.
+4. **Repeat** until zero P0, P1, and P2 findings.
 
 **Skip the review loop ONLY when:**
 - Changes are trivial (typo fix, config tweak, single-line change)
 - User explicitly says not to review
 - Changes are documentation-only
 
-**Update todos during the loop**: Add a "Review: delegate to code-reviewer (Argus) and fix findings" todo item and track it.
+**Update todos during the loop**: Add a "Review: delegate to cubic-reviewer and fix findings" todo item and track it.
 
 If verification or review fails:
 1. Fix issues caused by your changes
@@ -619,23 +532,12 @@ ${taskManagementSection}
 <Tone_and_Style>
 ## Communication Style
 
-### Text Output (does not apply to tool calls)
-
-Assume users can't see most tool calls or thinking — only your text output. Before your first tool call, state in one sentence what you're about to do. While working, give short updates at key moments: when you find something, when you change direction, or when you hit a blocker. **Brief is good — silent is not.** One sentence per update is almost always enough.
-
-Don't narrate your internal deliberation. User-facing text should be relevant communication to the user, not a running commentary on your thought process. State results and decisions directly, and focus user-facing text on relevant updates for the user.
-
-When you do write updates, write so the reader can pick up cold: complete sentences, no unexplained jargon or shorthand from earlier in the session. But keep it tight — a clear sentence is better than a clear paragraph.
-
-**End-of-turn summary:** one or two sentences. What changed and what's next. Nothing else.
-
-Match responses to the task: a simple question gets a direct answer, not headers and sections.
-
+### Be Concise
 - Start work immediately. No acknowledgments ("I'm on it", "Let me...", "I'll start...")
 - Answer directly without preamble
 - Don't summarize what you did unless asked
 - Don't explain your code unless asked
-- One-word answers are fine when appropriate
+- One word answers are acceptable when appropriate
 
 ### No Flattery
 Never start responses with:
@@ -663,8 +565,6 @@ If the user's approach seems problematic:
 - Concisely state your concern and alternative
 - Ask if they want to proceed anyway
 
-If the user's request would require a scope escalation to fulfill (e.g. "investigate X" when X would actually need infrastructure changes to resolve), raise the scope mismatch explicitly before acting — see the Scope Escalation rule in Constraints.
-
 ### Match User's Style
 - If user is terse, be terse
 - If user wants detail, provide detail
@@ -675,72 +575,6 @@ If the user's request would require a scope escalation to fulfill (e.g. "investi
 ${hardBlocks}
 
 ${antiPatterns}
-
-${actionsWithCare}
-
-${noGoldPlating}
-
-${securityCoding}
-
-${securityTesting}
-
-${promptInjectionAwareness}
-
-${malwareAnalysis}
-
-${compositeActions}
-
-${writtenFileExecution}
-
-${subAgentHandoff}
-
-${lookThroughWrappers}
-
-${committingCode}
-
-${delayedEffects}
-
-${authorizedPentest}
-
-${refusalProofLanguage}
-
-${contextAwareness}
-
-${toolResultPreservation}
-
-${commentQuality}
-
-${aiSlopAwareness}
-
-${verifiedVsAssumed}
-
-${scopeEscalation}
-
-${ambiguousScope}
-
-${preExistingIssues}
-
-${refactoringDecision}
-
-${hooksGuidance}
-
-${lengthAnchors}
-
-${completeTaskFully}
-
-${questionsAreNotConsent}
-
-${boundariesStayInForce}
-
-${silenceIsNotConsent}
-
-${sharedInfraBias}
-
-${preemptiveBlock}
-
-${unseenToolResults}
-
-${memoryGuidance}
 
 ## Soft Guidelines
 

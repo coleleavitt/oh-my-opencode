@@ -89,7 +89,6 @@ export function createToolGuardHooks(args: {
     : null
 
   const cc = pluginConfig.claude_code
-  const mdExcludes = cc?.md_excludes
 
   let directoryAgentsInjector: ReturnType<typeof createDirectoryAgentsInjectorHook> | null = null
   if (isHookEnabled("directory-agents-injector")) {
@@ -103,13 +102,13 @@ export function createToolGuardHooks(args: {
       })
     } else {
       directoryAgentsInjector = safeHook("directory-agents-injector", () =>
-        createDirectoryAgentsInjectorHook(ctx, modelCacheState, { mdExcludes }))
+        createDirectoryAgentsInjectorHook(ctx, modelCacheState))
     }
   }
 
   const directoryReadmeInjector = isHookEnabled("directory-readme-injector")
     ? safeHook("directory-readme-injector", () =>
-        createDirectoryReadmeInjectorHook(ctx, modelCacheState, { mdExcludes }))
+        createDirectoryReadmeInjectorHook(ctx, modelCacheState))
     : null
 
   const emptyTaskResponseDetector = isHookEnabled("empty-task-response-detector")
@@ -121,7 +120,6 @@ export function createToolGuardHooks(args: {
     ? safeHook("rules-injector", () =>
         createRulesInjectorHook(ctx, modelCacheState, {
           skipClaudeUserRules,
-          mdExcludes,
         }))
     : null
 

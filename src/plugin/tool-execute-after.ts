@@ -154,6 +154,7 @@ export function createToolExecuteAfterHandler(args: {
       await hooks.hashlineReadEnhancer?.["tool.execute.after"]?.(hookInput, output)
       await hooks.webfetchRedirectGuard?.["tool.execute.after"]?.(hookInput, output)
       await hooks.jsonErrorRecovery?.["tool.execute.after"]?.(hookInput, output)
+      await hooks.awaySummary?.toolExecuteAfter?.({ sessionID: hookInput.sessionID, tool: hookInput.tool })
     }
 
     if (input.tool === "extract" || input.tool === "discard") {

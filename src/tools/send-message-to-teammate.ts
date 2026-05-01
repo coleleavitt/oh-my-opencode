@@ -79,12 +79,13 @@ Fails with a clear error if the name isn't registered for this session (use \`li
       }
 
       options.teammateRegistry.touch(parentSessionID, name, "running")
+      options.teammateRegistry.recordMessage(parentSessionID, name, "parent", args.prompt)
 
       const continuationArgs: DelegateTaskArgs = {
         description: `continue → ${name}`,
         prompt: args.prompt,
         run_in_background: args.run_in_background === true,
-        session_id: entry.sessionID,
+        task_id: entry.sessionID,
         load_skills: [],
       }
 
@@ -104,7 +105,8 @@ Fails with a clear error if the name isn't registered for this session (use \`li
           const parentContext = await resolveParentContext(ctx, options.client)
           result = await executeBackgroundContinuation(continuationArgs, ctx, executorCtx, parentContext)
         } else {
-          result = await executeSyncContinuation(continuationArgs, ctx, executorCtx)
+          const parentContext = await resolveParentContext(ctx, options.client)
+          result = await executeSyncContinuation(continuationArgs, ctx, executorCtx, parentContext)
         }
         options.teammateRegistry.touch(parentSessionID, name, "idle")
         log("[send_message_to_teammate] completed", {

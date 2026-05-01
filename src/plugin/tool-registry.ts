@@ -28,6 +28,7 @@ import {
   createTaskList,
   createTaskUpdateTool,
   createHashlineEditTool,
+  createMonitorTool,
 } from "../tools"
 import { getMainSessionID } from "../features/claude-code-session-state"
 import { filterDisabledTools } from "../shared/disabled-tools"
@@ -112,6 +113,7 @@ const LOW_PRIORITY_TOOL_ORDER = [
   "lsp_goto_definition",
   "lsp_symbols",
   "lsp_diagnostics",
+  "monitor",
 ] as const
 
 export function trimToolsToCap(filteredTools: ToolsRecord, maxTools: number): void {
@@ -276,6 +278,7 @@ export function createToolRegistry(args: {
     ...(interactiveBashEnabled ? { interactive_bash: factories.interactive_bash } : {}),
     ...taskToolsRecord,
     ...hashlineToolsRecord,
+    monitor: createMonitorTool(),
   }
 
   for (const toolDefinition of Object.values(allTools)) {

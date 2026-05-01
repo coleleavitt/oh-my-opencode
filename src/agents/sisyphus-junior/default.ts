@@ -8,39 +8,7 @@
  */
 
 import { resolvePromptAppend } from "../builtin-agents/resolve-file-uri"
-import {
-  buildAntiDuplicationSection,
-  buildActionsWithCareSection,
-  buildNoGoldPlatingSection,
-  buildSecurityCodingSection,
-  buildSecurityTestingSection,
-  buildContextAwarenessSection,
-  buildPromptInjectionAwarenessSection,
-  buildMalwareAnalysisSection,
-  buildCompositeActionsSection,
-  buildWrittenFileExecutionSection,
-  buildSubAgentHandoffSection,
-  buildLookThroughWrappersSection,
-  buildCommittingCodeSection,
-  buildDelayedEffectsSection,
-  buildAuthorizedPentestSection,
-  buildRefusalProofLanguageSection,
-  buildToolResultPreservationSection,
-  buildCommentQualitySection,
-  buildAiSlopAwarenessSection,
-  buildMemoryGuidanceSection,
-  buildScopeEscalationSection,
-  buildVerifiedVsAssumedSection,
-  buildAmbiguousScopeSection,
-  buildPreExistingIssuesSection,
-  buildRefactoringDecisionSection,
-  buildQuestionsAreNotConsentSection,
-  buildBoundariesStayInForceSection,
-  buildSilenceIsNotConsentSection,
-  buildSharedInfraBiasSection,
-  buildPreemptiveBlockSection,
-  buildUnseenToolResultsSection,
-} from "../dynamic-agent-prompt-builder"
+import { buildAntiDuplicationSection } from "../dynamic-agent-prompt-builder"
 
 export function buildDefaultSisyphusJuniorPrompt(
   useTaskSystem: boolean,
@@ -71,66 +39,6 @@ Task NOT complete without:
 STOP after first successful verification. Do NOT re-verify.
 Maximum status checks: 2. Then stop regardless.
 </Termination>
-
-${buildActionsWithCareSection()}
-
-${buildNoGoldPlatingSection()}
-
-${buildSecurityCodingSection()}
-
-${buildSecurityTestingSection()}
-
-${buildPromptInjectionAwarenessSection()}
-
-${buildMalwareAnalysisSection()}
-
-${buildCompositeActionsSection()}
-
-${buildWrittenFileExecutionSection()}
-
-${buildSubAgentHandoffSection()}
-
-${buildLookThroughWrappersSection()}
-
-${buildCommittingCodeSection()}
-
-${buildDelayedEffectsSection()}
-
-${buildAuthorizedPentestSection()}
-
-${buildRefusalProofLanguageSection()}
-
-${buildContextAwarenessSection()}
-
-${buildToolResultPreservationSection()}
-
-${buildCommentQualitySection()}
-
-${buildAiSlopAwarenessSection()}
-
-${buildVerifiedVsAssumedSection()}
-
-${buildScopeEscalationSection()}
-
-${buildAmbiguousScopeSection()}
-
-${buildPreExistingIssuesSection()}
-
-${buildRefactoringDecisionSection()}
-
-${buildQuestionsAreNotConsentSection()}
-
-${buildBoundariesStayInForceSection()}
-
-${buildSilenceIsNotConsentSection()}
-
-${buildSharedInfraBiasSection()}
-
-${buildPreemptiveBlockSection()}
-
-${buildUnseenToolResultsSection()}
-
-${buildMemoryGuidanceSection()}
 
 <Style>
 - Start immediately. No acknowledgments.

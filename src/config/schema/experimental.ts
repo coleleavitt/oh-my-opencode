@@ -24,6 +24,18 @@ export const ExperimentalConfigSchema = z.object({
   max_tools: z.number().int().min(1).optional(),
   /** Enable fork agent: implicit parallel exploration when subagent_type is omitted from task tool */
   fork_agent_enabled: z.boolean().optional(),
+  stream_watchdog: z.object({
+    enabled: z.boolean().optional().default(false),
+    thresholdMs: z.number().min(1000).optional().default(30000),
+  }).optional(),
+  /** Hint compaction to preserve the prompt cache prefix so cached tokens survive (CC v126 parity: tengu_compact_cache_prefix) */
+  compact_cache_prefix: z.boolean().optional().default(true),
+  /** Retry remote MCP server connections on transient failures (CC v126 parity: tengu_mcp_retry_failed_remote) */
+  mcp_retry: z.object({
+    enabled: z.boolean().default(true),
+    max_attempts: z.number().int().min(1).max(10).default(3),
+    initial_delay_ms: z.number().int().min(100).max(60000).default(1000),
+  }).optional(),
 })
 
 export type ExperimentalConfig = z.infer<typeof ExperimentalConfigSchema>

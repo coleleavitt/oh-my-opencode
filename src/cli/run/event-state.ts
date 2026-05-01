@@ -9,6 +9,11 @@ export interface EventState {
   hasReceivedMeaningfulWork: boolean
   /** Timestamp of the last received event (for watchdog detection) */
   lastEventTimestamp: number
+  /** Timestamp of the last received byte/data from the stream (for stall detection).
+   *  Updated before event parsing, so it tracks raw data arrival.
+   *  NOTE: OMO processes parsed SSE events, not raw bytes. This tracks event-level
+   *  granularity which is the closest proxy available without raw stream access. */
+  lastByteTimestamp: number
   /** Count of assistant messages for the main session */
   messageCount: number
   /** Current agent name from the latest assistant message */
@@ -45,6 +50,12 @@ export interface EventState {
   completionMetaPrintedByMessageId: Record<string, boolean>
 }
 
+const DEFAULT_STALL_THRESHOLD_MS = 30_000
+
+export function isStreamStalled(state: EventState, thresholdMs = DEFAULT_STALL_THRESHOLD_MS): boolean {
+  return Date.now() - state.lastByteTimestamp > thresholdMs
+}
+
 export function createEventState(): EventState {
   return {
     mainSessionIdle: false,
@@ -55,6 +66,7 @@ export function createEventState(): EventState {
     currentTool: null,
     hasReceivedMeaningfulWork: false,
     lastEventTimestamp: Date.now(),
+    lastByteTimestamp: Date.now(),
     messageCount: 0,
     currentAgent: null,
     currentModel: null,

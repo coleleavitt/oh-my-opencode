@@ -78,13 +78,6 @@
         "type": "string"
       }
     },
-    "agent_definitions": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
     "mcp_env_allowlist": {
       "type": "array",
       "items": {
@@ -5555,8 +5548,61 @@
         },
         "fork_agent_enabled": {
           "type": "boolean"
+        },
+        "stream_watchdog": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "default": false,
+              "type": "boolean"
+            },
+            "thresholdMs": {
+              "default": 30000,
+              "type": "number",
+              "minimum": 1000
+            }
+          },
+          "required": [
+            "enabled",
+            "thresholdMs"
+          ],
+          "additionalProperties": false
+        },
+        "compact_cache_prefix": {
+          "default": true,
+          "type": "boolean"
+        },
+        "mcp_retry": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "default": true,
+              "type": "boolean"
+            },
+            "max_attempts": {
+              "default": 3,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "initial_delay_ms": {
+              "default": 1000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 60000
+            }
+          },
+          "required": [
+            "enabled",
+            "max_attempts",
+            "initial_delay_ms"
+          ],
+          "additionalProperties": false
         }
       },
+      "required": [
+        "compact_cache_prefix"
+      ],
       "additionalProperties": false
     },
     "auto_update": {
@@ -6466,6 +6512,25 @@
       "items": {
         "type": "string"
       }
+    },
+    "away_summary": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "thresholdMs": {
+          "default": 300000,
+          "type": "number",
+          "minimum": 30000
+        }
+      },
+      "required": [
+        "enabled",
+        "thresholdMs"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

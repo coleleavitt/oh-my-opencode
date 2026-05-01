@@ -36,13 +36,16 @@ Use when you're unsure which teammates are available, or before calling send_mes
       }
       const now = Date.now()
       const lines = [
-        `| name | agent | status | age |`,
-        `|------|-------|--------|-----|`,
+        `| name | agent | status | age | last message |`,
+        `|------|-------|--------|-----|--------------|`,
       ]
       for (const e of entries) {
         const ageSec = Math.round((now - e.createdAt) / 1000)
         const age = ageSec < 60 ? `${ageSec}s` : ageSec < 3600 ? `${Math.round(ageSec / 60)}m` : `${Math.round(ageSec / 3600)}h`
-        lines.push(`| ${e.name} | ${e.agent} | ${e.status} | ${age} |`)
+        const dm = e.lastMessage && e.lastMessageFrom
+          ? `from ${e.lastMessageFrom}: ${e.lastMessage}`
+          : ""
+        lines.push(`| ${e.name} | ${e.agent} | ${e.status} | ${age} | ${dm} |`)
       }
       return lines.join("\n")
     },

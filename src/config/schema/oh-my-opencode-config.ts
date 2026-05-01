@@ -46,7 +46,6 @@ export const OhMyOpenCodeConfigSchema = z.object({
   disabled_commands: z.array(BuiltinCommandNameSchema).optional(),
   /** Disable specific tools by name (e.g., ["todowrite", "todoread"]) */
   disabled_tools: z.array(z.string()).optional(),
-  agent_definitions: AgentDefinitionsConfigSchema,
   mcp_env_allowlist: z.array(z.string()).optional(),
   /** Enable hashline_edit tool/hook integrations (default: false) */
   hashline_edit: z.boolean().optional(),
@@ -93,6 +92,10 @@ export const OhMyOpenCodeConfigSchema = z.object({
   disable_agents_fleet: z.boolean().optional(),
   /** Migration history to prevent re-applying migrations (e.g., model version upgrades) */
   _migrations: z.array(z.string()).optional(),
+  away_summary: z.object({
+    enabled: z.boolean().optional().default(true),
+    thresholdMs: z.number().min(30000).optional().default(300000),
+  }).optional(),
 })
 
 export type OhMyOpenCodeConfig = z.infer<typeof OhMyOpenCodeConfigSchema>

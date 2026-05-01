@@ -90,6 +90,20 @@ export function createTeammateRegistry(): TeammateRegistry {
       return entry
     },
 
+    recordMessage(
+      parentSessionID: string,
+      name: string,
+      from: string,
+      message: string,
+    ): TeammateEntry | undefined {
+      const entry = getInner(parentSessionID)?.get(name)
+      if (!entry) return undefined
+      entry.lastActivityAt = Date.now()
+      entry.lastMessage = message.length > 120 ? message.slice(0, 117) + "..." : message
+      entry.lastMessageFrom = from
+      return entry
+    },
+
     dismiss(parentSessionID: string, name: string): TeammateEntry | undefined {
       const inner = getInner(parentSessionID)
       if (!inner) return undefined

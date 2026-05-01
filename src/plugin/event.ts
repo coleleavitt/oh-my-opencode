@@ -269,6 +269,7 @@ export function createEventHandler(args: {
     await runEventHookSafely("writeExistingFileGuard", hooks.writeExistingFileGuard?.event, input);
     await runEventHookSafely("atlasHook", hooks.atlasHook?.handler, input);
     await runEventHookSafely("autoSlashCommand", hooks.autoSlashCommand?.event, input);
+    await runEventHookSafely("awaySummary", hooks.awaySummary?.eventHandler, input);
   };
 
   const recentSyntheticIdles = new Map<string, number>();

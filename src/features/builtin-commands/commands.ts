@@ -8,6 +8,8 @@ import { REFACTOR_TEMPLATE } from "./templates/refactor"
 import { START_WORK_TEMPLATE } from "./templates/start-work"
 import { HANDOFF_TEMPLATE } from "./templates/handoff"
 import { REMOVE_AI_SLOPS_TEMPLATE } from "./templates/remove-ai-slops"
+import { SECURITY_REVIEW_TEMPLATE } from "./templates/security-review"
+import { REVIEW_TEMPLATE, REVIEW_LOOP_TEMPLATE } from "./templates/review"
 
 interface LoadBuiltinCommandsOptions {
   useRegisteredAgents?: boolean
@@ -120,6 +122,21 @@ Timestamp: $TIMESTAMP
 $ARGUMENTS
 </user-request>`,
       argumentHint: "[goal]",
+    },
+    "security-review": {
+      description: "(builtin) Security-focused vulnerability audit via the code-reviewer subagent (Argus) with argus-security skill",
+      template: SECURITY_REVIEW_TEMPLATE,
+      argumentHint: "",
+    },
+    review: {
+      description: "",
+      template: REVIEW_TEMPLATE,
+      argumentHint: "",
+    },
+    "review-loop": {
+      description: "(builtin) Run review\u2192fix\u2192re-review loop until zero P-1/P-2 issues remain",
+      template: REVIEW_LOOP_TEMPLATE,
+      argumentHint: "",
     },
   }
 }

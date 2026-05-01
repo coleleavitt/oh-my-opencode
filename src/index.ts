@@ -102,6 +102,8 @@ const serverPlugin: Plugin = async (input, _options): Promise<Hooks> => {
     pluginConfig,
     modelCacheState,
     backgroundManager: managers.backgroundManager,
+    skillMcpManager: managers.skillMcpManager,
+    teammateRegistry: managers.teammateRegistry,
     modelFallbackControllerAccessor: managers.modelFallbackControllerAccessor,
     isHookEnabled,
     safeHookEnabled,
@@ -123,7 +125,7 @@ const serverPlugin: Plugin = async (input, _options): Promise<Hooks> => {
 
     "experimental.session.compacting": async (
       compactingInput: { sessionID: string },
-      output: { context: string[] },
+      output: { context: string[]; preserveCachePrefix?: boolean },
     ): Promise<void> => {
       await hooks.compactionContextInjector?.capture(compactingInput.sessionID)
       await hooks.compactionTodoPreserver?.capture(compactingInput.sessionID)
@@ -133,6 +135,9 @@ const serverPlugin: Plugin = async (input, _options): Promise<Hooks> => {
       )
       if (hooks.compactionContextInjector) {
         output.context.push(hooks.compactionContextInjector.inject(compactingInput.sessionID))
+      }
+      if (pluginConfig.experimental?.compact_cache_prefix !== false) {
+        output.preserveCachePrefix = true
       }
     },
   }

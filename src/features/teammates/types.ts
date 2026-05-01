@@ -32,6 +32,10 @@ export interface TeammateEntry {
   lastActivityAt: number
   /** ms since epoch of registration. */
   createdAt: number
+  /** Last peer DM content (≤120 chars, truncated). */
+  lastMessage?: string
+  /** Who sent the last peer DM (teammate name or "parent"). */
+  lastMessageFrom?: string
 }
 
 export type RegisterResult =
@@ -76,6 +80,12 @@ export interface TeammateRegistry {
    * caller's job (the dismiss_teammate tool will abort before removing).
    */
   dismiss(parentSessionID: string, name: string): TeammateEntry | undefined
+
+  /**
+   * Record a peer DM on a teammate entry. Updates lastMessage (truncated
+   * to 120 chars) and lastMessageFrom. Returns the updated entry.
+   */
+  recordMessage(parentSessionID: string, name: string, from: string, message: string): TeammateEntry | undefined
 
   /**
    * Remove all teammates for a parent session. Returns the count

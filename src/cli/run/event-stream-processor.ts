@@ -1,6 +1,7 @@
 import pc from "picocolors"
 import type { RunContext, EventPayload } from "./types"
 import type { EventState } from "./event-state"
+import { isStreamStalled } from "./event-state"
 import { logEventVerbose } from "./event-formatting"
 import {
   handleSessionError,
@@ -21,6 +22,9 @@ export async function processEvents(
 ): Promise<void> {
   for await (const event of stream) {
     if (ctx.abortController.signal.aborted) break
+
+    // Track data arrival before parsing (closest proxy to byte-level tracking)
+    state.lastByteTimestamp = Date.now()
 
     try {
       const payload = event as EventPayload
@@ -51,4 +55,10 @@ export async function processEvents(
       console.error(pc.red(`[event error] ${err}`))
     }
   }
+}
+
+export function checkStreamStall(state: EventState, thresholdMs?: number): string | null {
+  if (!isStreamStalled(state, thresholdMs)) return null
+  const elapsedMs = Date.now() - state.lastByteTimestamp
+  return `[stream-watchdog] no bytes for ${elapsedMs}ms, possible stream stall`
 }

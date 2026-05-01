@@ -60,7 +60,6 @@ export function createRalphLoopHook(
 		checkSessionExists,
 		backgroundManager,
 		loopState,
-		backgroundManager,
 	})
 
 	return {

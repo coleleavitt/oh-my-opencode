@@ -37,6 +37,8 @@ import {
   createAutoMemoryHook,
   createFileChangedHook,
   createTeammatesCleanupHook,
+  createMcpRetryHook,
+  createAwaySummaryHook,
 } from "../../hooks";
 import { createAnthropicEffortHook } from "../../hooks/anthropic-effort";
 import {
@@ -94,6 +96,8 @@ export type SessionHooks = {
   autoMemory: ReturnType<typeof createAutoMemoryHook> | null;
   fileChanged: ReturnType<typeof createFileChangedHook> | null;
   teammatesCleanup: ReturnType<typeof createTeammatesCleanupHook> | null;
+  mcpRetry: ReturnType<typeof createMcpRetryHook> | null;
+  awaySummary: ReturnType<typeof createAwaySummaryHook> | null;
 };
 
 export function createSessionHooks(args: {
@@ -395,6 +399,14 @@ export function createSessionHooks(args: {
       ? safeHook("teammates-cleanup", () => createTeammatesCleanupHook(teammateRegistry))
       : null;
 
+  const mcpRetry = isHookEnabled("mcp-retry")
+    ? safeHook("mcp-retry", () => createMcpRetryHook(pluginConfig.experimental?.mcp_retry))
+    : null;
+
+  const awaySummary = isHookEnabled("away-summary" as HookName)
+    ? safeHook("away-summary" as HookName, () => createAwaySummaryHook(ctx))
+    : null;
+
   return {
     contextWindowMonitor,
     preemptiveCompaction,
@@ -428,5 +440,7 @@ export function createSessionHooks(args: {
     autoMemory,
     fileChanged,
     teammatesCleanup,
+    mcpRetry,
+    awaySummary,
   };
 }

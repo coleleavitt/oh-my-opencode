@@ -1589,6 +1589,24 @@ The task was re-queued on a fallback model after a retryable failure.
     this.notifications.delete(sessionID)
   }
 
+  isSessionSettled(sessionID: string): boolean {
+    for (const task of this.tasks.values()) {
+      if (task.parentSessionID === sessionID && (task.status === "running" || task.status === "pending")) {
+        return false
+      }
+    }
+    if (this.notificationQueueByParent.has(sessionID)) return false
+    const pending = this.pendingNotifications.get(sessionID)
+    if (pending && pending.length > 0) return false
+    return true
+  }
+
+  async flushPendingNotifications(sessionID: string): Promise<void> {
+    const pending = this.getPendingNotifications(sessionID)
+    if (pending.length === 0) return
+    this.clearNotifications(sessionID)
+  }
+
   queuePendingNotification(sessionID: string | undefined, notification: string): void {
     if (!sessionID) return
     const existingNotifications = this.pendingNotifications.get(sessionID) ?? []

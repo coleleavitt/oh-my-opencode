@@ -8,6 +8,7 @@ import type { HashlineEdit } from "./types"
 import { HashlineMismatchError } from "./validation"
 import { runFormattersForFile, type FormatterClient } from "./formatter-trigger"
 import type { PluginContext } from "../../plugin/types"
+import { withFileLock } from "../shared/file-lock"
 
 interface HashlineEditArgs {
   filePath: string
@@ -94,79 +95,81 @@ export async function executeHashlineEditTool(args: HashlineEditArgs, context: T
 
     const edits = deleteMode ? [] : normalizeHashlineEdits(args.edits)
 
-    const file = Bun.file(filePath)
-    const exists = await file.exists()
-    if (!exists && !deleteMode && !canCreateFromMissingFile(edits)) {
-      return `Error: File not found: ${filePath}`
-    }
-
-    if (deleteMode) {
-      if (!exists) return `Error: File not found: ${filePath}`
-      await Bun.file(filePath).delete()
-      return `Successfully deleted ${filePath}`
-    }
-
-    const rawOldContent = exists ? Buffer.from(await file.arrayBuffer()).toString("utf8") : ""
-    const oldEnvelope = canonicalizeFileText(rawOldContent)
-
-    const applyResult = applyHashlineEditsWithReport(oldEnvelope.content, edits)
-    const canonicalNewContent = applyResult.content
-
-    if (canonicalNewContent === oldEnvelope.content && !rename) {
-      let diagnostic = `No changes made to ${filePath}. The edits produced identical content.`
-      if (applyResult.noopEdits > 0) {
-        diagnostic += ` No-op edits: ${applyResult.noopEdits}. Re-read the file and provide content that differs from current lines.`
+    return await withFileLock(filePath, async () => {
+      const file = Bun.file(filePath)
+      const exists = await file.exists()
+      if (!exists && !deleteMode && !canCreateFromMissingFile(edits)) {
+        return `Error: File not found: ${filePath}`
       }
-      return `Error: ${diagnostic}`
-    }
 
-    const writeContent = restoreFileText(canonicalNewContent, oldEnvelope)
+      if (deleteMode) {
+        if (!exists) return `Error: File not found: ${filePath}`
+        await Bun.file(filePath).delete()
+        return `Successfully deleted ${filePath}`
+      }
 
-    await Bun.write(filePath, writeContent)
+      const rawOldContent = exists ? Buffer.from(await file.arrayBuffer()).toString("utf8") : ""
+      const oldEnvelope = canonicalizeFileText(rawOldContent)
 
-    if (pluginCtx?.client) {
-      await runFormattersForFile(pluginCtx.client as FormatterClient, context.directory, filePath)
-      const formattedContent = Buffer.from(await Bun.file(filePath).arrayBuffer()).toString("utf8")
-      if (formattedContent !== writeContent) {
-        const formattedEnvelope = canonicalizeFileText(formattedContent)
-        const formattedMeta = buildSuccessMeta(
-          filePath,
-          oldEnvelope.content,
-          formattedEnvelope.content,
-          applyResult.noopEdits,
-          applyResult.deduplicatedEdits
-        )
-        await publishToolMetadata(metadataContext, formattedMeta)
-        if (rename && rename !== filePath) {
-          await Bun.write(rename, formattedContent)
-          await Bun.file(filePath).delete()
-          return `Moved ${filePath} to ${rename}`
+      const applyResult = applyHashlineEditsWithReport(oldEnvelope.content, edits)
+      const canonicalNewContent = applyResult.content
+
+      if (canonicalNewContent === oldEnvelope.content && !rename) {
+        let diagnostic = `No changes made to ${filePath}. The edits produced identical content.`
+        if (applyResult.noopEdits > 0) {
+          diagnostic += ` No-op edits: ${applyResult.noopEdits}. Re-read the file and provide content that differs from current lines.`
         }
-        return `Updated ${filePath}`
+        return `Error: ${diagnostic}`
       }
-    }
 
-    if (rename && rename !== filePath) {
-      await Bun.write(rename, writeContent)
-      await Bun.file(filePath).delete()
-    }
+      const writeContent = restoreFileText(canonicalNewContent, oldEnvelope)
 
-    const effectivePath = rename && rename !== filePath ? rename : filePath
-    const meta = buildSuccessMeta(
-      effectivePath,
-      oldEnvelope.content,
-      canonicalNewContent,
-      applyResult.noopEdits,
-      applyResult.deduplicatedEdits
-    )
+      await Bun.write(filePath, writeContent)
 
-    await publishToolMetadata(metadataContext, meta)
+      if (pluginCtx?.client) {
+        await runFormattersForFile(pluginCtx.client as FormatterClient, context.directory, filePath)
+        const formattedContent = Buffer.from(await Bun.file(filePath).arrayBuffer()).toString("utf8")
+        if (formattedContent !== writeContent) {
+          const formattedEnvelope = canonicalizeFileText(formattedContent)
+          const formattedMeta = buildSuccessMeta(
+            filePath,
+            oldEnvelope.content,
+            formattedEnvelope.content,
+            applyResult.noopEdits,
+            applyResult.deduplicatedEdits
+          )
+          await publishToolMetadata(metadataContext, formattedMeta)
+          if (rename && rename !== filePath) {
+            await Bun.write(rename, formattedContent)
+            await Bun.file(filePath).delete()
+            return `Moved ${filePath} to ${rename}`
+          }
+          return `Updated ${filePath}`
+        }
+      }
 
-    if (rename && rename !== filePath) {
-      return `Moved ${filePath} to ${rename}`
-    }
+      if (rename && rename !== filePath) {
+        await Bun.write(rename, writeContent)
+        await Bun.file(filePath).delete()
+      }
 
-    return `Updated ${effectivePath}`
+      const effectivePath = rename && rename !== filePath ? rename : filePath
+      const meta = buildSuccessMeta(
+        effectivePath,
+        oldEnvelope.content,
+        canonicalNewContent,
+        applyResult.noopEdits,
+        applyResult.deduplicatedEdits
+      )
+
+      await publishToolMetadata(metadataContext, meta)
+
+      if (rename && rename !== filePath) {
+        return `Moved ${filePath} to ${rename}`
+      }
+
+      return `Updated ${effectivePath}`
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (error instanceof HashlineMismatchError) {

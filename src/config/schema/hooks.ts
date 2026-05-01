@@ -65,6 +65,8 @@ export const HookNameSchema = z.enum([
   "cwd-changed",
   "teammates-cleanup",
   "destructive-bash-guard",
+  "away-summary",
+  "mcp-retry",
 ])
 
 export type HookName = z.infer<typeof HookNameSchema>
