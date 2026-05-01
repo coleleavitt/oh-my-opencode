@@ -55,7 +55,7 @@ export class TaskToastManager {
       // "NEW" arrow in the task list stays attached to the most
       // recently dispatched piece of work — matches the invariant of
       // showTaskListToast(newTask) when it's first called from addTask.
-      this.showTaskListToast(running[0])
+      this.showTaskListToast(running[0], true)
     }, TaskToastManager.TICK_INTERVAL_MS)
     // Don't keep the process alive just for this tick — if nothing
     // else has work to do we should exit promptly on host shutdown.
@@ -243,7 +243,7 @@ export class TaskToastManager {
   /**
    * Show consolidated toast with all running/queued tasks
    */
-  private showTaskListToast(newTask: TrackedTask): void {
+  private showTaskListToast(newTask: TrackedTask, isTickUpdate = false): void {
     const tuiClient = this.client as ClientWithTui
     if (!tuiClient.tui?.showToast) return
 
@@ -251,9 +251,14 @@ export class TaskToastManager {
     const running = this.getRunningTasks()
     const queued = this.getQueuedTasks()
 
-    const title = newTask.isBackground
-      ? `New Background Task`
-      : `New Task Executed`
+    let title: string
+    if (isTickUpdate) {
+      title = `Tasks Running (${running.length})`
+    } else {
+      title = newTask.isBackground
+        ? `New Background Task`
+        : `New Task Executed`
+    }
 
     tuiClient.tui.showToast({
       body: {
