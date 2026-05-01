@@ -41,7 +41,7 @@ describe("list_teammates", () => {
       teammatesConfig: { enabled: true, max_concurrent: 5 },
     })
     const out = String(await tool.execute({}, ctx()))
-    expect(out).toContain("| name | agent | status | age |")
+    expect(out).toContain("| name | agent | status | task | age |")
     expect(out).toContain("| alpha | explore | pending |")
     expect(out).toContain("| beta | librarian | pending |")
   })

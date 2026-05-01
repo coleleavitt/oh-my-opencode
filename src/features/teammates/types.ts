@@ -36,6 +36,22 @@ export interface TeammateEntry {
   lastMessage?: string
   /** Who sent the last peer DM (teammate name or "parent"). */
   lastMessageFrom?: string
+
+  // --- Shutdown approval protocol (Feature 4) ---
+  /** True while teammate awaits leader's approve/reject decision. */
+  awaitingLeaderApproval?: boolean
+  /** Reason the teammate gave for requesting shutdown. */
+  shutdownReason?: string
+
+  // --- Task status updates (Feature 5) ---
+  /** Teammate-reported task lifecycle state. */
+  taskStatus?: "in_progress" | "completed" | "blocked" | "needs_review"
+  /** One-line headline (≤200 chars). */
+  taskSummary?: string
+  /** 0-100 completion percentage. */
+  taskProgress?: number
+  /** Path to team shared memory directory for this teammate's parent group. */
+  teamMemoryDir?: string
 }
 
 export type RegisterResult =
@@ -92,6 +108,28 @@ export interface TeammateRegistry {
    * removed. Used on session.deleted events.
    */
   clearParent(parentSessionID: string): number
+
+  /**
+   * Reverse-lookup: find the teammate entry whose sessionID matches.
+   * Returns { parentSessionID, entry } or undefined.
+   */
+  findBySessionID(sessionID: string): { parentSessionID: string; entry: TeammateEntry } | undefined
+
+  // --- Shutdown approval protocol ---
+  /** Teammate requests permission to shut down. Sets awaitingLeaderApproval + idle. */
+  requestShutdown(parentSessionID: string, name: string, reason: string): TeammateEntry | undefined
+  /** Leader approves — returns entry for caller to dismiss. */
+  approveShutdown(parentSessionID: string, name: string): TeammateEntry | undefined
+  /** Leader rejects — clears approval flag, teammate continues. */
+  rejectShutdown(parentSessionID: string, name: string): TeammateEntry | undefined
+
+  // --- Task status updates ---
+  /** Teammate pushes a task status update. */
+  updateTask(parentSessionID: string, name: string, update: {
+    status: "in_progress" | "completed" | "blocked" | "needs_review"
+    summary: string
+    progress?: number
+  }): TeammateEntry | undefined
 
   /** Test introspection only. */
   snapshot(): readonly TeammateEntry[]

@@ -36,8 +36,8 @@ Use when you're unsure which teammates are available, or before calling send_mes
       }
       const now = Date.now()
       const lines = [
-        `| name | agent | status | age | last message |`,
-        `|------|-------|--------|-----|--------------|`,
+        `| name | agent | status | task | age | last message |`,
+        `|------|-------|--------|------|-----|--------------|`,
       ]
       for (const e of entries) {
         const ageSec = Math.round((now - e.createdAt) / 1000)
@@ -45,7 +45,13 @@ Use when you're unsure which teammates are available, or before calling send_mes
         const dm = e.lastMessage && e.lastMessageFrom
           ? `from ${e.lastMessageFrom}: ${e.lastMessage}`
           : ""
-        lines.push(`| ${e.name} | ${e.agent} | ${e.status} | ${age} | ${dm} |`)
+        const statusCol = e.awaitingLeaderApproval
+          ? `⏳ awaiting approval: ${e.shutdownReason ?? "no reason"}`
+          : e.status
+        const taskCol = e.taskStatus
+          ? `${e.taskStatus}${e.taskProgress !== undefined ? ` ${e.taskProgress}%` : ""} — ${e.taskSummary ?? ""}`
+          : ""
+        lines.push(`| ${e.name} | ${e.agent} | ${statusCol} | ${taskCol} | ${age} | ${dm} |`)
       }
       return lines.join("\n")
     },

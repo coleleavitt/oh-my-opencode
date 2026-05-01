@@ -9,6 +9,7 @@ import type {
 } from "./delegate-task/types"
 import { executeSyncContinuation, executeBackgroundContinuation } from "./delegate-task/executor"
 import { resolveParentContext } from "./delegate-task/parent-context-resolver"
+import { ensureTeamMemoryDir } from "../features/auto-memory"
 import { log } from "../shared/logger"
 
 export interface SendMessageToTeammateOptions {
@@ -71,19 +72,65 @@ Fails with a clear error if the name isn't registered for this session (use \`li
         return `Invalid arguments: name is required.`
       }
 
-      const parentSessionID = ctx.sessionID
-      const entry = options.teammateRegistry.get(parentSessionID, name)
+      // Resolve the target teammate. Two paths:
+      // 1. Parent → teammate (existing): registry.get(currentSessionID, name)
+      // 2. Peer → peer (new): current session IS a teammate, look up via shared parent
+      let parentSessionID = ctx.sessionID
+      let entry = options.teammateRegistry.get(parentSessionID, name)
+      let isPeerDM = false
+      let senderName = "parent"
+
+      if (!entry) {
+        const selfLookup = options.teammateRegistry.findBySessionID(ctx.sessionID)
+        if (selfLookup) {
+          parentSessionID = selfLookup.parentSessionID
+          senderName = selfLookup.entry.name
+
+          if (senderName === name) {
+            return `Cannot send a message to yourself ("${name}").`
+          }
+
+          entry = options.teammateRegistry.get(parentSessionID, name)
+          isPeerDM = !!entry
+        }
+      }
+
       if (!entry) {
         const known = options.teammateRegistry.list(parentSessionID).map((e) => `"${e.name}" (${e.agent})`).join(", ")
         return `Unknown teammate "${name}" for this session. ${known ? `Known teammates: ${known}.` : "No teammates registered yet."} Spawn one with task(teammate=true, teammate_name="${name}", subagent_type=..., prompt=..., run_in_background=false).`
       }
 
       options.teammateRegistry.touch(parentSessionID, name, "running")
-      options.teammateRegistry.recordMessage(parentSessionID, name, "parent", args.prompt)
+
+      // Ensure team memory dir exists and is stored on the entry
+      if (!entry.teamMemoryDir) {
+        try {
+          entry.teamMemoryDir = await ensureTeamMemoryDir(options.directory)
+        } catch {
+          // Non-fatal — team memory is optional
+        }
+      }
+
+      const messagePrefix = isPeerDM ? `[from ${senderName}] ` : ""
+      const effectivePrompt = `${messagePrefix}${args.prompt}`
+
+      options.teammateRegistry.recordMessage(parentSessionID, name, senderName, args.prompt)
+
+      // Implicit shutdown rejection: sending a message to a teammate
+      // that's awaiting approval auto-clears the flag (leader chose to
+      // continue the conversation instead of dismissing).
+      if (entry.awaitingLeaderApproval && !isPeerDM) {
+        options.teammateRegistry.rejectShutdown(parentSessionID, name)
+        log("[send_message_to_teammate] implicitly rejected shutdown request", { name })
+      }
+
+      if (isPeerDM) {
+        log("[send-message] peer DM: " + senderName + " → " + name)
+      }
 
       const continuationArgs: DelegateTaskArgs = {
         description: `continue → ${name}`,
-        prompt: args.prompt,
+        prompt: effectivePrompt,
         run_in_background: args.run_in_background === true,
         task_id: entry.sessionID,
         load_skills: [],

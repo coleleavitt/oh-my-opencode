@@ -122,6 +122,57 @@ export function createTeammateRegistry(): TeammateRegistry {
       return count
     },
 
+    findBySessionID(sessionID: string): { parentSessionID: string; entry: TeammateEntry } | undefined {
+      for (const [pid, inner] of byParent) {
+        for (const entry of inner.values()) {
+          if (entry.sessionID === sessionID) return { parentSessionID: pid, entry }
+        }
+      }
+      return undefined
+    },
+
+    requestShutdown(parentSessionID: string, name: string, reason: string): TeammateEntry | undefined {
+      const entry = getInner(parentSessionID)?.get(name)
+      if (!entry) return undefined
+      entry.awaitingLeaderApproval = true
+      entry.shutdownReason = reason
+      entry.status = "idle"
+      entry.lastActivityAt = Date.now()
+      return entry
+    },
+
+    approveShutdown(parentSessionID: string, name: string): TeammateEntry | undefined {
+      const entry = getInner(parentSessionID)?.get(name)
+      if (!entry || !entry.awaitingLeaderApproval) return undefined
+      return entry
+    },
+
+    rejectShutdown(parentSessionID: string, name: string): TeammateEntry | undefined {
+      const entry = getInner(parentSessionID)?.get(name)
+      if (!entry || !entry.awaitingLeaderApproval) return undefined
+      entry.awaitingLeaderApproval = false
+      entry.shutdownReason = undefined
+      entry.status = "idle"
+      entry.lastActivityAt = Date.now()
+      return entry
+    },
+
+    updateTask(parentSessionID: string, name: string, update: {
+      status: "in_progress" | "completed" | "blocked" | "needs_review"
+      summary: string
+      progress?: number
+    }): TeammateEntry | undefined {
+      const entry = getInner(parentSessionID)?.get(name)
+      if (!entry) return undefined
+      entry.taskStatus = update.status
+      entry.taskSummary = update.summary.length > 200 ? update.summary.slice(0, 197) + "..." : update.summary
+      if (update.progress !== undefined) {
+        entry.taskProgress = Math.max(0, Math.min(100, Math.round(update.progress)))
+      }
+      entry.lastActivityAt = Date.now()
+      return entry
+    },
+
     snapshot(): readonly TeammateEntry[] {
       const result: TeammateEntry[] = []
       for (const inner of byParent.values()) {

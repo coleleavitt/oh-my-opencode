@@ -39,6 +39,8 @@ export { createLookAt } from "./look-at"
 export { createDelegateTask } from "./delegate-task"
 export { createSendMessageToTeammate } from "./send-message-to-teammate"
 export { createListTeammates, createDismissTeammate } from "./teammate-admin"
+export { createRequestShutdownTool } from "./request-shutdown"
+export { createTeammateTaskUpdateTool } from "./teammate-task-update"
 export {
   createTaskCreateTool,
   createTaskGetTool,

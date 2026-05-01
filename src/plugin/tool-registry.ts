@@ -29,6 +29,8 @@ import {
   createTaskUpdateTool,
   createHashlineEditTool,
   createMonitorTool,
+  createRequestShutdownTool,
+  createTeammateTaskUpdateTool,
 } from "../tools"
 import { getMainSessionID } from "../features/claude-code-session-state"
 import { filterDisabledTools } from "../shared/disabled-tools"
@@ -146,7 +148,7 @@ export function trimToolsToCap(filteredTools: ToolsRecord, maxTools: number): vo
 export function createToolRegistry(args: {
   ctx: PluginContext
   pluginConfig: OhMyOpenCodeConfig
-  managers: Pick<Managers, "backgroundManager" | "tmuxSessionManager" | "skillMcpManager" | "modelFallbackControllerAccessor">
+  managers: Pick<Managers, "backgroundManager" | "tmuxSessionManager" | "skillMcpManager" | "modelFallbackControllerAccessor" | "teammateRegistry">
   skillContext: SkillContext
   availableCategories: AvailableCategory[]
   interactiveBashEnabled?: boolean
@@ -279,6 +281,9 @@ export function createToolRegistry(args: {
     ...taskToolsRecord,
     ...hashlineToolsRecord,
     monitor: createMonitorTool(),
+    // Teammate-only tools (self-guard via findBySessionID)
+    request_shutdown: createRequestShutdownTool({ teammateRegistry: managers.teammateRegistry }),
+    teammate_task_update: createTeammateTaskUpdateTool({ teammateRegistry: managers.teammateRegistry }),
   }
 
   for (const toolDefinition of Object.values(allTools)) {

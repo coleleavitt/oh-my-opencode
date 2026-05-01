@@ -15,6 +15,7 @@ import {
 } from "./executor"
 import { prepareDelegateTaskArgs } from "./tool-argument-preparation"
 import { createDelegateTaskPresentation } from "./tool-description"
+import { buildForkContext } from "./fork-context"
 
 export { resolveCategoryConfig } from "./categories"
 export type { SyncSessionCreatedEvent, DelegateTaskToolOptions, BuildSystemContentInput } from "./types"
@@ -70,7 +71,30 @@ export function createDelegateTask(options: DelegateTaskToolOptions): ToolDefini
       }
 
       if (!delegateTaskArgs.category && !delegateTaskArgs.subagent_type) {
-        return `Invalid arguments: Must provide either category or subagent_type.`
+        // Fork mode: no category or subagent_type → implicit fork with parent context
+        const forkContext = await buildForkContext(options.client, parentContext.sessionID)
+        const forkAgent = "build"
+        const forkPrompt = forkContext
+          ? `${forkContext}\n\n${delegateTaskArgs.prompt}`
+          : delegateTaskArgs.prompt
+        const forkArgs = { ...delegateTaskArgs, prompt: forkPrompt, subagent_type: forkAgent }
+
+        log("[task] fork mode — inheriting parent context", {
+          parentSessionID: parentContext.sessionID,
+          hasForkContext: !!forkContext,
+        })
+
+        const forkSystemContent = buildSystemContent({
+          skillContent,
+          skillContents,
+          availableCategories,
+          availableSkills,
+        })
+
+        if (runInBackground) {
+          return executeBackgroundTask(forkArgs, ctx, options, parentContext, forkAgent, undefined, forkSystemContent)
+        }
+        return executeSyncTask(forkArgs, ctx, options, parentContext, forkAgent, undefined, forkSystemContent)
       }
 
       let systemDefaultModel: string | undefined

@@ -72,6 +72,7 @@ export async function sendSyncPrompt(
     task: allowTask,
     call_omo_agent: true,
     question: false,
+    send_message_to_teammate: true,
     ...getAgentToolRestrictions(input.agentToUse),
   }
   setSessionTools(input.sessionID, tools)

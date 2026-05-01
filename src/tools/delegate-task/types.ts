@@ -20,6 +20,8 @@ export interface DelegateTaskArgs {
   task_id?: string
   command?: string
   load_skills: string[]
+  /** Fork context: parent's recent messages, XML-wrapped. Set by fork mode. */
+  forkContextMessages?: string
 }
 
 export interface ToolContextWithMetadata {

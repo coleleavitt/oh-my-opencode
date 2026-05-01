@@ -130,6 +130,7 @@ export async function executeSyncContinuation(
       task: allowTask,
       call_omo_agent: true,
       question: false,
+      send_message_to_teammate: true,
       ...(resumeAgent ? getAgentToolRestrictions(resumeAgent) : {}),
     }
     setSessionTools(continuationID, tools)
