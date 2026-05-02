@@ -164,6 +164,40 @@ describe("Sisyphus-Junior model inheritance", () => {
     )
   })
 
+  test("does not inherit atlas model as system default", async () => {
+    // #given
+    const createBuiltinAgentsMock = agents.createBuiltinAgents as unknown as {
+      mockResolvedValue: (value: Record<string, unknown>) => void
+    }
+    createBuiltinAgentsMock.mockResolvedValue({
+      sisyphus: { name: "sisyphus", prompt: "test", mode: "primary" },
+      oracle: { name: "oracle", prompt: "test", mode: "subagent" },
+      atlas: { name: "atlas", prompt: "test", mode: "primary", model: "openai/gpt-5.5" },
+    })
+    const pluginConfig = createPluginConfig({})
+    const config: Record<string, unknown> = {
+      model: "openai/gpt-5.5",
+      agent: {},
+    }
+    const handler = createConfigHandler({
+      ctx: { directory: "/tmp" },
+      pluginConfig,
+      modelCacheState: {
+        anthropicContext1MEnabled: false,
+        modelContextLimitsCache: new Map(),
+      },
+    })
+
+    // #when
+    await handler(config)
+
+    // #then
+    const agentConfig = config.agent as Record<string, { model?: string }>
+    expect(agentConfig[getAgentDisplayName("sisyphus-junior")]?.model).toBe(
+      sisyphusJunior.SISYPHUS_JUNIOR_DEFAULTS.model
+    )
+  })
+
   test("uses explicitly configured sisyphus-junior model", async () => {
     // #given
     const pluginConfig = createPluginConfig({

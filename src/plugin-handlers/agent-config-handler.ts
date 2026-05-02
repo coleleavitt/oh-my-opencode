@@ -231,7 +231,7 @@ export async function applyAgentConfig(params: {
 
     agentConfig["sisyphus-junior"] = createSisyphusJuniorAgentWithOverrides(
       params.pluginConfig.agents?.["sisyphus-junior"],
-      (builtinAgents.atlas as { model?: string } | undefined)?.model,
+      undefined,
       useTaskSystem,
     );
 
